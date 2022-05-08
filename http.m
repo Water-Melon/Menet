@@ -124,7 +124,46 @@ Http {
 }
 
 @requestProcessService(op, json, &conf) {
-    //TODO
+    /*
+     * {
+     *     "name": "service name",
+     *     "key": "rc4 key",
+     *     "timeout": 1000,
+     *     "type": "local|remote",
+     *     "addr": ["ip", "port"]
+     * }
+     */
+    h = $Http;
+    h.version = 'HTTP/1.1';
+    h.headers = [
+        'Server: Menet',
+    ];
+    json = _mln_json_decode(json);
+
+    if (json['type'] == 'local') {
+        type = 'localService';
+    } else if (json['type'] == 'remote') {
+        type = 'remoteService';
+    } else {
+        h.code = 400;
+        h.msg = 'Bad Request';
+        return h;
+    }
+    _mln_msg_queue_send('manager', _mln_json_encode([
+        'type': type,
+        'op': op,
+        'from': conf['hash'],
+        'data': [
+            'name': json['name'],
+            'addr': json['addr'],
+        ],
+    ]));
+
+    resp = _mln_msg_queue_recv(conf['hash']);
+    resp = _mln_json_decode(resp);
+    h.code = resp['code'];
+    h.msg = resp['msg'];
+    return h;
 }
 
 @requestProcessBind(op, json, &conf) {

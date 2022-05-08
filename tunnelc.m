@@ -9,6 +9,8 @@ if (!fd) {
 } fi
 hash = conf['hash'];
 
+//TODO sync tunnel name to peer, if failed this task vanished
+
 mln_msg_queue_send('manager', mln_json_encode([
     'type': 'tunnelConnected',
     'op': nil,
