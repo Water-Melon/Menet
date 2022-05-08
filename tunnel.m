@@ -15,6 +15,7 @@ mln_msg_queue_send('manager', mln_json_encode([
     'from': hash,
     'data': [
         'name': conf['name'],
+        'dest': conf['dest'],
     ],
 ]));
 

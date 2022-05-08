@@ -5,7 +5,7 @@
         if (msg['op'] == 'remove')
             from = msg['from'];
         fi
-        _mln_msg_queue_send(t, _mln_json_encode([
+        _mln_msg_queue_send(t['hash'], _mln_json_encode([
             'op': 'remove',
             'from': from,
         ]));
@@ -53,7 +53,10 @@ while (true) {
             tunnelHandle(msg);
             break;
         case 'tunnelConnected':
-            tunnels[msg['data']['name']] = msg['from'];
+            tunnels[msg['data']['name']] = [
+                'hash': msg['from'],
+                'dest': msg['data']['dest'],
+            ];
             break;
         case 'localService':
             localServiceHandle(msg);
