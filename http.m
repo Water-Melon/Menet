@@ -92,31 +92,90 @@ Http {
     return h;
 }
 
-@requestProcessTunnel(json, &conf) {
+@requestProcessTunnel(op, json, &conf) {
+    /*
+     * {
+     *   "name": "tunnel name",
+     *   "dest": ['ip', 'port']
+     * }
+     */
+    h = $Http;
+    h.version = 'HTTP/1.1';
+    h.headers = [
+        'Server: Metun',
+    ];
+    json = _mln_json_decode(json);
+
+    if (op == 'update') {
+        fd = _mln_tcp_connect(json['dest'][0], json['dest'][1], 3000);
+        if (!fd) {
+            h.code = 400;
+            h.msg = 'Bad Request';
+            return h;
+        } fi
+
+        _mln_msg_queue_send('manager', _mln_json_encode([
+            'type': 'tunnel',
+            'op': op,
+            'sender': conf['hash'],
+            'data': [
+                'name': json['name'],
+                'fd': fd
+            ]
+        ]));
+    } else {
+        _mln_msg_queue_send('manager', _mln_json_encode([
+            'type': 'tunnel',
+            'op': op,
+            'sender': conf['hash'],
+            'data': [
+                'name': json['name'],
+            ]
+        ]));
+    }
+
+    resp = _mln_msg_queue_recv(conf['hash']);
+    resp = _mln_json_decode(resp);
+    h.code = resp['code'];
+    h.msg = resp['msg'];
+    if (op == 'remove') {
+        _mln_tcp_close(resp['data']['fd']);
+    } fi
+    return h;
 }
 
-@requestProcessListen(json, &conf) {
+@requestProcessListen(op, json, &conf) {
 }
 
-@requestProcessMsg(json, &conf) {
-}
-
-@requestProcessBind(json, &conf) {
+@requestProcessBind(op, json, &conf) {
 }
 
 @requestProcess(http, &conf) {
+    if (http.method != 'POST' && http.method != 'DELETE') {
+        h = $Http;
+        h.version = 'HTTP/1.1';
+        h.code = 400;
+        h.msg = 'Bad Request';
+        h.headers = [
+            'Server: Metun',
+        ];
+        _mln_tcp_send(conf['fd'], h.response());
+        return;
+    } fi
+    if (http.method == 'POST')
+        op = 'update';
+    else
+        op = 'remove';
+
     switch (http.uri) {
         case '/tunnel':
-            requestProcessTunnel(http.body, &conf);
+            h = _requestProcessTunnel(op, http.body, conf);
             break;
         case '/listen':
-            requestProcessListen(http.body, &conf);
-            break;
-        case '/msg':
-            requestProcessMsg(http.body, &conf);
+            h = _requestProcessListen(op, http.body, conf);
             break;
         case '/bind':
-            requestProcessBind(http.body, &conf);
+            h = _requestProcessBind(op, http.body, conf);
             break;
         default:
             h = $Http;
