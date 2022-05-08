@@ -123,7 +123,7 @@ Http {
     return h;
 }
 
-@requestProcessListen(op, json, &conf) {
+@requestProcessService(op, json, &conf) {
     //TODO
 }
 
@@ -152,8 +152,8 @@ Http {
         case '/tunnel':
             h = _requestProcessTunnel(op, http.body, conf);
             break;
-        case '/listen':
-            h = _requestProcessListen(op, http.body, conf);
+        case '/service':
+            h = _requestProcessService(op, http.body, conf);
             break;
         case '/bind':
             h = _requestProcessBind(op, http.body, conf);

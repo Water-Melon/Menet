@@ -27,11 +27,19 @@
     } fi
 }
 
-@serviceHandle(&msg) {
+@localServiceHandle(&msg) {
     //TODO
 }
 
-@bindHandle(&msg) {
+@remoteServiceHandle(&msg) {
+    //TODO
+}
+
+@bindLocalHandle(&msg) {
+    //TODO
+}
+
+@bindRemoteHandle(&msg) {
     //TODO
 }
 
@@ -47,11 +55,17 @@ while (true) {
         case 'tunnelConnected':
             tunnels[msg['data']['name']] = msg['from'];
             break;
-        case 'service':
-            serviceHandle(msg);
+        case 'localService':
+            localServiceHandle(msg);
             break;
-        case 'bind':
-            bindHandle(msg);
+        case 'remoteService':
+            remoteServiceHandle(msg);
+            break;
+        case 'bindLocal':
+            bindLocalHandle(msg);
+            break;
+        case 'bindRemote':
+            bindRemoteHandle(msg);
             break;
         default:
             break;
