@@ -167,7 +167,44 @@ Http {
 }
 
 @requestProcessBind(op, json, &conf) {
-    //TODO
+    /*
+     * {
+     *     "tunnel": "tunnel name",
+     *     "service": "service name",
+     *     "type": "local|remote"
+     * }
+     */
+    h = $Http;
+    h.version = 'HTTP/1.1';
+    h.headers = [
+        'Server: Menet',
+    ];
+    json = _mln_json_decode(json);
+
+    if (json['type'] == 'local') {
+        type = 'bindLocal';
+    } else if (json['type'] == 'remote') {
+        type = 'bindRemote';
+    } else {
+        h.code = 400;
+        h.msg = 'Bad Request';
+        return h;
+    }
+    _mln_msg_queue_send('manager', _mln_json_encode([
+        'type': type,
+        'op': op,
+        'from': conf['hash'],
+        'data': [
+            'tunnel': json['tunnel'],
+            'service': json['service'],
+        ],
+    ]));
+
+    resp = _mln_msg_queue_recv(conf['hash']);
+    resp = _mln_json_decode(resp);
+    h.code = resp['code'];
+    h.msg = resp['msg'];
+    return h;
 }
 
 @requestProcess(http, &conf) {

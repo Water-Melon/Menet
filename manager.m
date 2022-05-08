@@ -1,3 +1,12 @@
+Map {
+    tunnelMap;
+    serviceMap;
+    @init() {
+        this.tunnelMap = [];
+        this.serviceMap = [];
+    }
+}
+
 @tunnelHandle(&msg) {
     name = msg['data']['name'];
     notExist = true;
@@ -73,16 +82,52 @@
 }
 
 @bindLocalHandle(&msg) {
-    //TODO
+    t = msg['data']['tunnel'];
+    s = msg['data']['service'];
+    if (_mln_has(_localMap.serviceMap, s)) {
+        _localMap.serviceMap = _mln_key_diff(_localMap.serviceMap, [s:nil]);
+        _localMap.tunnelMap[t] = _mln_diff(_localMap.tunnelMap[t], [s]);
+    } fi
+    if (msg['op'] == 'update') {
+        _localMap.serviceMap[s] = t;
+        if (!(_localMap.tunnelMap[t])) {
+            _localMap.tunnelMap[t] = [];
+        } fi
+        _localMap.tunnelMap[t][] = s;
+    } fi
+    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        'code': 200,
+        'msg': 'OK',
+    ]));
 }
 
 @bindRemoteHandle(&msg) {
-    //TODO
+    t = msg['data']['tunnel'];
+    s = msg['data']['service'];
+    if (_mln_has(_remoteMap.serviceMap, s)) {
+        _remoteMap.serviceMap = _mln_key_diff(_remoteMap.serviceMap, [s:nil]);
+        _remoteMap.tunnelMap[t] = _mln_diff(_remoteMap.tunnelMap[t], [s]);
+    } fi
+    if (msg['op'] == 'update') {
+        _remoteMap.serviceMap[s] = t;
+        if (!(_remoteMap.tunnelMap[t])) {
+            _remoteMap.tunnelMap[t] = [];
+        } fi
+        _remoteMap.tunnelMap[t][] = s;
+    } fi
+    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        'code': 200,
+        'msg': 'OK',
+    ]));
 }
 
 tunnels = [];
 localServices = [];
 remoteServices = [];
+localMap = $Map;
+localMap.init();
+remoteMap = $Map;
+localMap.init();
 
 while (true) {
     msg = mln_msg_queue_recv('manager', 10000);
@@ -116,10 +161,13 @@ while (true) {
     } fi
 
     localServices = mln_diff(localServices, [nil]);
+    remoteServices = mln_diff(remoteServices, [nil]);
+    tunnels = mln_diff(tunnels, [nil]);
+
     n = mln_size(localServices);
     for (i = 0; i < n; ++i) {
         s = localServices[i];
-        if (!s) //TODO or tunnel-service bounding not existent
+        if (!(mln_has(localMap.serviceMap, s['name'])))
             continue;
         fi
         connfd = mln_tcp_accept(s['fd'], 10);
