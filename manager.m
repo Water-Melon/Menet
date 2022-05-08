@@ -115,10 +115,11 @@ while (true) {
         }
     } fi
 
+    localServices = mln_diff(localServices, [nil]);
     n = mln_size(localServices);
     for (i = 0; i < n; ++i) {
         s = localServices[i];
-        if (!s)
+        if (!s) //TODO or tunnel-service bounding not existent
             continue;
         fi
         connfd = mln_tcp_accept(s['fd'], 10);
