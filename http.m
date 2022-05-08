@@ -102,52 +102,33 @@ Http {
     h = $Http;
     h.version = 'HTTP/1.1';
     h.headers = [
-        'Server: Metun',
+        'Server: Menet',
     ];
     json = _mln_json_decode(json);
 
-    if (op == 'update') {
-        fd = _mln_tcp_connect(json['dest'][0], json['dest'][1], 3000);
-        if (!fd) {
-            h.code = 400;
-            h.msg = 'Bad Request';
-            return h;
-        } fi
-
-        _mln_msg_queue_send('manager', _mln_json_encode([
-            'type': 'tunnel',
-            'op': op,
-            'sender': conf['hash'],
-            'data': [
-                'name': json['name'],
-                'fd': fd
-            ]
-        ]));
-    } else {
-        _mln_msg_queue_send('manager', _mln_json_encode([
-            'type': 'tunnel',
-            'op': op,
-            'sender': conf['hash'],
-            'data': [
-                'name': json['name'],
-            ]
-        ]));
-    }
+    _mln_msg_queue_send('manager', _mln_json_encode([
+        'type': 'tunnel',
+        'op': op,
+        'from': conf['hash'],
+        'data': [
+            'name': json['name'],
+            'dest': json['dest'],
+        ],
+    ]));
 
     resp = _mln_msg_queue_recv(conf['hash']);
     resp = _mln_json_decode(resp);
     h.code = resp['code'];
     h.msg = resp['msg'];
-    if (op == 'remove') {
-        _mln_tcp_close(resp['data']['fd']);
-    } fi
     return h;
 }
 
 @requestProcessListen(op, json, &conf) {
+    //TODO
 }
 
 @requestProcessBind(op, json, &conf) {
+    //TODO
 }
 
 @requestProcess(http, &conf) {
@@ -157,7 +138,7 @@ Http {
         h.code = 400;
         h.msg = 'Bad Request';
         h.headers = [
-            'Server: Metun',
+            'Server: Menet',
         ];
         _mln_tcp_send(conf['fd'], h.response());
         return;
@@ -183,7 +164,7 @@ Http {
             h.code = 400;
             h.msg = 'Bad Request';
             h.headers = [
-                'Server: Metun',
+                'Server: Menet',
             ];
             break;
     }
