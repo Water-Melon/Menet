@@ -150,6 +150,30 @@ Map {
     ]));
 }
 
+@tunnelConnectedHandle(&msg) {
+    name = msg['data']['name'];
+    if (_mln_has(_tunnels, name) && _tunnels[name]) {
+        _mln_msg_queue_send(_tunnels[name]['hash'], _mln_json_encode([
+            'op': 'remove',
+            'from': nil,
+        ]));
+        _tunnels[name] = nil;
+        _mln_msg_queue_send(msg['from'], _mln_json_encode([
+            'code': 400,
+            'msg': 'Bad Request',
+        ]));
+        return;
+    } fi
+    _tunnels[name] = [
+        'hash': msg['from'],
+        'dest': msg['data']['dest'],
+    ];
+    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        'code': 200,
+        'msg': 'OK',
+    ]));
+}
+
 tunnels = [];
 localServices = [];
 remoteServices = [];
@@ -167,10 +191,7 @@ while (true) {
                 tunnelHandle(msg);
                 break;
             case 'tunnelConnected':
-                tunnels[msg['data']['name']] = [
-                    'hash': msg['from'],
-                    'dest': msg['data']['dest'],
-                ];
+                tunnelConnectedHandle(msg);
                 break;
             case 'localService':
                 localServiceHandle(msg);

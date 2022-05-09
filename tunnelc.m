@@ -9,6 +9,17 @@ conf = mln_json_decode(EVAL_DATA);
     ]));
 }
 
+@cleanMsg(hash) {
+    cnt = 0;
+    while (cnt < 30) {
+        ret = _mln_msg_queue_recv(hash, 100000);
+        if (!ret)
+            ++cnt;
+        else
+            cnt = 0;
+    }
+}
+
 fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
 if (!fd) {
     badRequest(conf['from']);
@@ -51,10 +62,13 @@ mln_msg_queue_send('manager', mln_json_encode([
     ],
 ]));
 
-mln_msg_queue_send(conf['from'], mln_json_encode([
-    'code': 200,
-    'msg': "OK",
-]));
+ret = mln_msg_queue_recv(hash);
+mln_msg_queue_send(conf['from'], ret);
+ret = mln_json_decode(ret);
+if (ret['code'] != 200) {
+    mln_tcp_close(fd);
+    return;
+} fi
 
 while (true) {
     msg = mln_msg_queue_recv(hash, 10000);
@@ -62,7 +76,6 @@ while (true) {
         msg = mln_json_decode(msg);
         switch(msg['op']) {
             case 'remove':
-                //TODO send rest data
                 mln_tcp_close(fd);
                 if (msg['from']) {
                     mln_msg_queue_send(msg['from'], mln_json_encode([
@@ -70,6 +83,7 @@ while (true) {
                         'msg': "OK",
                     ]));
                 } fi
+                cleanMsg(hash);
                 return;
             default:
                 break;
