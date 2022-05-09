@@ -174,6 +174,17 @@ Map {
     ]));
 }
 
+@tunnelDisconnectedHandle(&msg) {
+    name = msg['data']['name'];
+    if (_mln_has(_tunnels, name) && _tunnels[name]) {
+        _tunnels[name] = nil;
+    } fi
+    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        'code': 200,
+        'msg': 'OK',
+    ]));
+}
+
 tunnels = [];
 localServices = [];
 remoteServices = [];
@@ -192,6 +203,9 @@ while (true) {
                 break;
             case 'tunnelConnected':
                 tunnelConnectedHandle(msg);
+                break;
+            case 'tunnelDisconnected':
+                tunnelDisconnectedHandle(msg);
                 break;
             case 'localService':
                 localServiceHandle(msg);

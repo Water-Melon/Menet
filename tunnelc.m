@@ -1,4 +1,5 @@
 #include "frame.m"
+#include "common.m"
 
 conf = mln_json_decode(EVAL_DATA);
 
@@ -7,17 +8,6 @@ conf = mln_json_decode(EVAL_DATA);
         'code': 400,
         'msg': 'Bad Request'
     ]));
-}
-
-@cleanMsg(hash) {
-    cnt = 0;
-    while (cnt < 30) {
-        ret = _mln_msg_queue_recv(hash, 100000);
-        if (!ret)
-            ++cnt;
-        else
-            cnt = 0;
-    }
 }
 
 fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
@@ -90,5 +80,11 @@ while (true) {
         }
     } fi
 
-    //TODO I/O and exception status update
+    ret = mln_tcp_recv(fd, 10);
+    if (mln_is_bool(ret)) {
+        closeConnection(fd, hash, conf['name']);
+        return;
+    } else if (!(mln_is_nil(ret))) {
+        //TODO I/O
+    } fi
 }
