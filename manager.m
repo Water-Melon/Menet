@@ -67,6 +67,8 @@ Map {
             'name': name,
             'addr': msg['data']['addr'],
             'fd': fd,
+            'key': msg['data']['key'],
+            'timeout': msg['data']['timeout'],
         ];
     } fi
     _mln_msg_queue_send(msg['from'], _mln_json_encode([
@@ -84,6 +86,8 @@ Map {
         _remoteServices[name] = [
             'name': name,
             'addr': msg['data']['addr'],
+            'key': msg['data']['key'],
+            'timeout': msg['data']['timeout'],
         ];
     } fi
     _mln_msg_queue_send(msg['from'], _mln_json_encode([
@@ -185,6 +189,26 @@ Map {
     ]));
 }
 
+@connectionHandle(&msg) {
+    hash = msg['from'];
+    if (msg['op'] == 'update') {
+        if (_connSet[hash]) {
+            _mln_msg_queue_send(hash, _mln_json_encode([
+                'code': 403,
+                'msg': 'Forbidden',
+            ]));
+            return;
+        } fi
+        _connSet[hash] = true;
+    } else {
+        _connSet[hash] = nil;
+    }
+    _mln_msg_queue_send(hash, _mln_json_encode([
+        'code': 200,
+        'msg': 'OK',
+    ]));
+}
+
 tunnels = [];
 localServices = [];
 remoteServices = [];
@@ -192,6 +216,7 @@ localMap = $Map;
 localMap.init();
 remoteMap = $Map;
 remoteMap.init();
+connSet = [];
 
 while (true) {
     msg = mln_msg_queue_recv('manager', 10000);
@@ -222,6 +247,9 @@ while (true) {
             case 'config':
                 configHandle(msg);
                 break;
+            case 'connection':
+                connectionHandle(msg);
+                break;
             default:
                 break;
         }
@@ -230,14 +258,23 @@ while (true) {
     localServices = mln_diff(localServices, [nil]);
     remoteServices = mln_diff(remoteServices, [nil]);
     tunnels = mln_diff(tunnels, [nil]);
+    connSet = mln_diff(connSet, [nil]);
 
     n = mln_size(localServices);
     for (i = 0; i < n; ++i) {
         s = localServices[i];
-        if (!(mln_has(localMap.serviceMap, s['name'])))
+        if (!(mln_has(localMap.serviceMap, s['name'])) || !(mln_has(tunnels, localMap.serviceMap[s['name']])))
             continue;
         fi
         connfd = mln_tcp_accept(s['fd'], 10);
-        //TODO process all local port tcp connection
+        if (mln_is_bool(connfd) || mln_is_nil(connfd))
+            continue;
+        fi
+        mln_eval('localService.m', mln_json_encode([
+            'name': localServices[i]['name'],
+            'fd': connfd,
+            'key': localServices[i]['key'],
+            'timeout': localServices[i]['timeout'],
+        ]));
     }
 }

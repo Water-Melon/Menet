@@ -1,0 +1,24 @@
+#include "common.m"
+
+conf = mln_json_decode(EVAL_DATA);
+name = conf['name'];
+fd = conf['fd'];
+key = conf['key'];
+timeout = conf['timeout'];
+hash = mln_md5('' + fd + mln_time());
+
+mln_msg_queue_send('manager', mln_json_encode([
+    'type': 'connection',
+    'op': 'update',
+    'from': hash,
+    'data': [],
+]));
+
+ret = mln_json_decode(mln_msg_queue_recv(hash));
+if (ret['code'] != 200) {
+    mln_tcp_close(fd);
+    return;
+} fi
+
+
+//TODO recv and send and close and clean msg.

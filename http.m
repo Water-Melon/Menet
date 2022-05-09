@@ -156,6 +156,8 @@ Http {
         'data': [
             'name': json['name'],
             'addr': json['addr'],
+            'key': json['key'],
+            'timeout': json['timeout'],
         ],
     ]));
 
