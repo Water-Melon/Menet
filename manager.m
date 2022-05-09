@@ -22,13 +22,24 @@ Map {
         _tunnels[name] = nil;
     } fi
     if (msg['op'] == 'update') {
-        hash = _mln_md5(name + _mln_time());
-        _mln_eval('tunnelc.m', _mln_json_encode([
-            'from': msg['from'],
-            'dest': msg['data']['dest'],
-            'name': msg['data']['name'],
-            'hash': hash,
-        ]));
+        if (msg['data']['dest']) {
+            hash = _mln_md5(name + _mln_time());
+            _mln_eval('tunnelc.m', _mln_json_encode([
+                'from': msg['from'],
+                'dest': msg['data']['dest'],
+                'name': msg['data']['name'],
+                'hash': hash,
+            ]));
+        } else {
+            _tunnels[msg['data']['name']] = [
+                'hash': msg['from'],
+                'dest': msg['data']['dest'],
+            ];
+            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+                'code': 200,
+                'msg': 'OK',
+            ]));
+        }
     } else if (notExist) {
         _mln_msg_queue_send(msg['from'], _mln_json_encode([
             'code': 200,
