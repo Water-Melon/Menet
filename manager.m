@@ -159,7 +159,6 @@ while (true) {
                 tunnels[msg['data']['name']] = [
                     'hash': msg['from'],
                     'dest': msg['data']['dest'],
-                    'status': 'normal',
                 ];
                 break;
             case 'localService':

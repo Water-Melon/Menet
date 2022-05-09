@@ -1,15 +1,45 @@
+#include "frame.m"
+
 conf = mln_json_decode(EVAL_DATA);
-fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
-if (!fd) {
-    mln_msg_queue_send(conf['from'], mln_json_encode([
+
+@badRequest(from) {
+    _mln_msg_queue_send(from, _mln_json_encode([
         'code': 400,
         'msg': 'Bad Request'
     ]));
+}
+
+fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
+if (!fd) {
+    badRequest(conf['from']);
     return;
 } fi
 hash = conf['hash'];
 
-//TODO sync tunnel name to peer, if failed this task vanished
+ret = mln_tcp_send(fd, frameGenerate(mln_json_encode([
+    'type': 'sync',
+    'from': nil,
+    'to': nil,
+    'data': conf['name'],
+])));
+if (!ret) {
+    badRequest(conf['from']);
+    mln_tcp_close(fd);
+    return;
+} fi
+
+rbuf = mln_tcp_recv(fd, 3000);
+if (mln_is_bool(rbuf) || mln_is_nil(rbuf)) {
+    badRequest(conf['from']);
+    mln_tcp_close(fd);
+    return;
+} fi
+ret = frameParse(rbuf);
+if (!ret) {
+    badRequest(conf['from']);
+    mln_tcp_close(fd);
+    return;
+} fi
 
 mln_msg_queue_send('manager', mln_json_encode([
     'type': 'tunnelConnected',

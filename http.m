@@ -276,10 +276,11 @@ Http {
 self = mln_json_decode(EVAL_DATA);
 buf = '';
 while (true) {
-    ret = mln_tcp_recv(self['fd'], 30000);
-    if (!ret || (mln_is_bool(ret) && ret))
-        goto out;
-    fi
+    ret = mln_tcp_recv(self['fd'], 3000);
+    if (!ret || (mln_is_bool(ret) && ret)) {
+        mln_tcp_close(self['fd']);
+        break;
+    } fi
     buf += ret;
     ret = httpParse(buf);
     if (mln_is_nil(ret)) {
@@ -289,9 +290,7 @@ while (true) {
             ret.uri = 'error';
         fi
         requestProcess(ret, self);
+        mln_tcp_close(self['fd']);
+        break;
     } fi
-
-out:
-    mln_tcp_close(self['fd']);
-    break;
 }
