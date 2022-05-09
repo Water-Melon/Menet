@@ -145,7 +145,7 @@ remoteServices = [];
 localMap = $Map;
 localMap.init();
 remoteMap = $Map;
-localMap.init();
+remoteMap.init();
 
 while (true) {
     msg = mln_msg_queue_recv('manager', 10000);
