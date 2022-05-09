@@ -46,5 +46,5 @@ while (true) {
         }
     } fi
 
-    //TODO
+    //TODO I/O and exception status update
 }

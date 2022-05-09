@@ -121,6 +121,24 @@ Map {
     ]));
 }
 
+@configHandle(&msg) {
+    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        'code': 200,
+        'msg': 'OK',
+        'data': [
+            'tunnels': _tunnels,
+            'services': [
+                'local': _localServices,
+                'remote': _remoteServices,
+            ],
+            'bind': [
+                'local': _localMap.serviceMap,
+                'remote': _remoteMap.serviceMap,
+            ],
+        ],
+    ]));
+}
+
 tunnels = [];
 localServices = [];
 remoteServices = [];
@@ -141,6 +159,7 @@ while (true) {
                 tunnels[msg['data']['name']] = [
                     'hash': msg['from'],
                     'dest': msg['data']['dest'],
+                    'status': 'normal',
                 ];
                 break;
             case 'localService':
@@ -154,6 +173,9 @@ while (true) {
                 break;
             case 'bindRemote':
                 bindRemoteHandle(msg);
+                break;
+            case 'config':
+                configHandle(msg);
                 break;
             default:
                 break;

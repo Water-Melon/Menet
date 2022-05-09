@@ -207,8 +207,35 @@ Http {
     return h;
 }
 
+@requestProcessConfig(&conf) {
+    h = $Http;
+    h.version = 'HTTP/1.1';
+    h.headers = [
+        'Server: Menet',
+    ];
+    _mln_msg_queue_send('manager', _mln_json_encode([
+        'type': 'config',
+        'op': op,
+        'from': conf['hash'],
+    ]));
+    resp = _mln_msg_queue_recv(conf['hash']);
+    resp = _mln_json_decode(resp);
+    h.code = resp['code'];
+    h.msg = resp['msg'];
+    h.body = _mln_json_encode(resp['data']);
+    h.headers['Content-Length'] = _mln_strlen(h.body);
+    h.headers['Content-Type'] = 'application/json';
+    return h;
+}
+
 @requestProcess(http, &conf) {
-    if (http.method != 'POST' && http.method != 'DELETE') {
+    if (http.method == 'POST')
+        op = 'update';
+    else if (http.method == 'DELETE')
+        op = 'remove';
+    else if (http.method == 'GET' && http.uri == '/config')
+        op = 'get';
+    else {
         h = $Http;
         h.version = 'HTTP/1.1';
         h.code = 400;
@@ -218,11 +245,7 @@ Http {
         ];
         _mln_tcp_send(conf['fd'], h.response());
         return;
-    } fi
-    if (http.method == 'POST')
-        op = 'update';
-    else
-        op = 'remove';
+    }
 
     switch (http.uri) {
         case '/tunnel':
@@ -233,6 +256,9 @@ Http {
             break;
         case '/bind':
             h = _requestProcessBind(op, http.body, conf);
+            break;
+        case '/config':
+            h = _requestProcessConfig(conf);
             break;
         default:
             h = $Http;
@@ -259,7 +285,7 @@ while (true) {
     if (mln_is_nil(ret)) {
         continue;
     } else if (ret) {
-        if (!(ret.body))
+        if (ret.uri != '/config' && !(ret.body))
             ret.uri = 'error';
         fi
         requestProcess(ret, self);
