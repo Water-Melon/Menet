@@ -1,4 +1,3 @@
-#include "frame.m"
 #include "common.m"
 
 conf = mln_json_decode(EVAL_DATA);
@@ -59,4 +58,4 @@ if (ret['code'] != 200) {
     return;
 } fi
 
-tunnelLoop(fd, hash, conf['name']);
+tunnelLoop(fd, hash, conf['name'], rbuf);

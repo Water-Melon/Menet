@@ -195,7 +195,7 @@ Map {
     if (!(_mln_has(_localMap.serviceMap, serviceName)))
         return nil;
     fi
-    tname = _localMap.serviceMa[serviceName];
+    tname = _localMap.serviceMap[serviceName];
     if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname]))
         return nil;
     fi
@@ -203,8 +203,9 @@ Map {
 }
 
 @localConnectionHandle(&msg) {
-    hash = msg['from'];
-    if (msg['op'] == 'open') {
+    op = msg['op'];
+    if (op == 'open') {
+        hash = msg['from'];
         t = _getTunnelByLocalServiceName(msg['data']['name']);
         if (!t || _connSet[hash]) {
             _mln_msg_queue_send(hash, _mln_json_encode([
@@ -219,7 +220,8 @@ Map {
             'op': 'new',
             'from': hash,
         ]));
-    } else { /*close*/
+    } else if (op == 'close') {
+        hash = msg['from'];
         _connSet[hash] = nil;
         t = _getTunnelByLocalServiceName(msg['data']['name']);
         if (t) {
@@ -227,14 +229,28 @@ Map {
                 'type': 'connection',
                 'op': 'close',
                 'from': hash,
+                'to': msg['to'],
             ]));
         } fi
         _mln_msg_queue_send(hash, _mln_json_encode([
             'type': 'localConnection',
-            'op': msg['op'],
+            'op': op,
             'from': nil,
             'to': hash,
         ]));
+    } else if (op == 'openAckFail') {
+        hash = msg['to'];
+        if (_connSet[hash]) {
+            _connSet[hash] = nil;
+            _mln_msg_queue_send(hash, _mln_json_encode([
+                'type': 'localConnection',
+                'op': 'close',
+                'from': msg['from'],
+                'to': hash,
+            ]));
+        } fi
+    } else {
+        //TODO
     }
 }
 
@@ -251,7 +267,8 @@ while (true) {
     msg = mln_msg_queue_recv('manager', 10000);
     if (msg) {
         msg = mln_json_decode(msg);
-        switch (msg['type']) {
+        type = msg['type'];
+        switch (type) {
             case 'tunnel':
                 tunnelHandle(msg);
                 break;

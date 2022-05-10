@@ -1,4 +1,3 @@
-#include "frame.m"
 #include "common.m"
 
 conf = mln_json_decode(EVAL_DATA);
@@ -37,4 +36,4 @@ mln_msg_queue_send('manager', mln_json_encode([
     ],
 ]));
 
-tunnelLoop(fd, hash, name);
+tunnelLoop(fd, hash, name, rbuf);
