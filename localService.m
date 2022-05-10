@@ -18,9 +18,16 @@ mln_msg_queue_send('manager', mln_json_encode([
 
 ret = mln_msg_queue_recv(hash, 3000000);
 if (!ret) {
-    //TODO manager remove this
-    //wait manager response
     mln_tcp_close(fd);
+    mln_msg_queue_send('manager', mln_json_encode([
+        'type': 'localConnection',
+        'op': 'close',
+        'from': hash,
+        'data': [
+            'name': name,
+        ],
+    ]));
+    _cleanMsg(hash);
     return;
 } fi
 ret = mln_json_decode(ret);
