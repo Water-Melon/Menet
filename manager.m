@@ -254,6 +254,10 @@ Map {
     }
 }
 
+@connectionNoticeHandle(&msg) {
+    _mln_print(msg);//@@@@@@@@@@@@@@@@@@@
+}
+
 tunnels = [];
 localServices = [];
 remoteServices = [];
@@ -295,6 +299,9 @@ while (true) {
                 break;
             case 'localConnection':
                 localConnectionHandle(msg);
+                break;
+            case 'connectionNotice':
+                connectionNoticeHandle(msg);
                 break;
             default:
                 break;

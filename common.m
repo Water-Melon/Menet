@@ -27,7 +27,7 @@
                     'from': nil,
                     'to': ret['from'],
                 ]));
-            } fi
+            } fi //TODO
         }
     }
 }
@@ -90,6 +90,15 @@
     _cleanTunnelMsg(hash);
 }
 
+@tunnelNetConnectionHandle(&msg) {
+    _mln_msg_queue_send('manager', _mln_json_encode([
+        'type': 'connectionNotice',
+        'op': msg['op'],
+        'from': msg['from'],
+        'to': msg['to'],
+    ]));
+}
+
 @tunnelLoop(fd, hash, name, &rbuf) {
     while (true) {
         msg = _mln_msg_queue_recv(hash, 10000);
@@ -116,8 +125,24 @@
             _closeConnection(fd, hash, name);
             return;
         } else if (!(_mln_is_nil(ret))) {
-            _mln_print(ret);//@@@@@@@@@@@@@@@@@
-            //TODO I/O
+            rbuf += ret;
+            ret = true;
+            frame = _frameParse(rbuf);
+            if (frame) {
+                frame = _mln_json_decode(frame);
+                type = frame['type'];
+                switch(type) {
+                    case 'connection':
+                        _tunnelNetConnectionHandle(frame);
+                        break;
+                    default: //TODO
+                        break;
+                }
+                if (!ret) {
+                    _closeConnection(fd, hash, name);
+                    return;
+                } fi
+            } fi
         } fi
     }
 }
