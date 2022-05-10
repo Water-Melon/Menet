@@ -16,7 +16,7 @@ if (!ret) {
     return;
 } fi
 ret = mln_json_decode(ret);
-serviceName = ret['data'];
+name = ret['data'];
 
 ret = mln_tcp_send(fd, frameGenerate(mln_json_encode([
     'code': 200,
@@ -32,36 +32,9 @@ mln_msg_queue_send('manager', mln_json_encode([
     'op': 'update',
     'from': conf['hash'],
     'data': [
-        'name': serviceName,
+        'name': name,
         'dest': nil,
     ],
 ]));
 
-while (true) {
-    msg = mln_msg_queue_recv(hash, 10000);
-    if (msg) {
-        msg = mln_json_decode(msg);
-        switch(msg['op']) {
-            case 'remove':
-                mln_tcp_close(fd);
-                if (msg['from']) {
-                    mln_msg_queue_send(msg['from'], mln_json_encode([
-                        'code': 200,
-                        'msg': "OK",
-                    ]));
-                } fi
-                cleanMsg(hash);
-                return;
-            default:
-                break;
-        }
-    } fi
-
-    ret = mln_tcp_recv(fd, 10);
-    if (mln_is_bool(ret)) {
-        closeConnection(fd, hash, serviceName);
-        return;
-    } else if (!(mln_is_nil(ret))) {
-        //TODO I/O
-    } fi
-}
+tunnelLoop(fd, hash, name);

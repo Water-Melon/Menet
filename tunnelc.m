@@ -9,7 +9,6 @@ conf = mln_json_decode(EVAL_DATA);
         'msg': 'Bad Request'
     ]));
 }
-
 fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
 if (!fd) {
     badRequest(conf['from']);
@@ -60,31 +59,4 @@ if (ret['code'] != 200) {
     return;
 } fi
 
-while (true) {
-    msg = mln_msg_queue_recv(hash, 10000);
-    if (msg) {
-        msg = mln_json_decode(msg);
-        switch(msg['op']) {
-            case 'remove':
-                mln_tcp_close(fd);
-                if (msg['from']) {
-                    mln_msg_queue_send(msg['from'], mln_json_encode([
-                        'code': 200,
-                        'msg': "OK",
-                    ]));
-                } fi
-                cleanMsg(hash);
-                return;
-            default:
-                break;
-        }
-    } fi
-
-    ret = mln_tcp_recv(fd, 10);
-    if (mln_is_bool(ret)) {
-        closeConnection(fd, hash, conf['name']);
-        return;
-    } else if (!(mln_is_nil(ret))) {
-        //TODO I/O
-    } fi
-}
+tunnelLoop(fd, hash, conf['name']);

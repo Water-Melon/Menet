@@ -8,17 +8,26 @@ timeout = conf['timeout'];
 hash = mln_md5('' + fd + mln_time());
 
 mln_msg_queue_send('manager', mln_json_encode([
-    'type': 'connection',
-    'op': 'update',
+    'type': 'localConnection',
+    'op': 'open',
     'from': hash,
-    'data': [],
+    'data': [
+        'name': name,
+    ],
 ]));
 
-ret = mln_json_decode(mln_msg_queue_recv(hash));
-if (ret['code'] != 200) {
+ret = mln_msg_queue_recv(hash, 3000000);
+if (!ret) {
+    //TODO manager remove this
+    //wait manager response
+    mln_tcp_close(fd);
+    return;
+} fi
+ret = mln_json_decode(ret);
+if (ret['type'] != 'localConnection' || ret['op'] != 'open') {
     mln_tcp_close(fd);
     return;
 } fi
 
-
+mln_print('Connected');//@@@@@@@@@@@@@@@@@@@
 //TODO recv and send and close and clean msg.

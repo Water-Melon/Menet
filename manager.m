@@ -16,7 +16,8 @@ Map {
             from = msg['from'];
         fi
         _mln_msg_queue_send(_tunnels[name]['hash'], _mln_json_encode([
-            'op': 'remove',
+            'type': 'disconnect',
+            'op': nil,
             'from': from,
         ]));
         _tunnels[name] = nil;
@@ -158,7 +159,8 @@ Map {
     name = msg['data']['name'];
     if (_mln_has(_tunnels, name) && _tunnels[name]) {
         _mln_msg_queue_send(_tunnels[name]['hash'], _mln_json_encode([
-            'op': 'remove',
+            'type': 'disconnect',
+            'op': nil,
             'from': nil,
         ]));
         _tunnels[name] = nil;
@@ -189,24 +191,51 @@ Map {
     ]));
 }
 
-@connectionHandle(&msg) {
+@getTunnelByLocalServiceName(serviceName) {
+    if (!(_mln_has(_localMap.serviceMap, serviceName)))
+        return nil;
+    fi
+    tname = _localMap.serviceMa[serviceName];
+    if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname]))
+        return nil;
+    fi
+    return _tunnels[tname];
+}
+
+@localConnectionHandle(&msg) {
     hash = msg['from'];
-    if (msg['op'] == 'update') {
-        if (_connSet[hash]) {
+    if (msg['op'] == 'open') {
+        t = _getTunnelByLocalServiceName(msg['data']['name']);
+        if (!t || _connSet[hash]) {
             _mln_msg_queue_send(hash, _mln_json_encode([
-                'code': 403,
-                'msg': 'Forbidden',
+                'type': 'localConnection',
+                'op': 'close',
             ]));
             return;
         } fi
         _connSet[hash] = true;
-    } else {
+        _mln_msg_queue_send(t['hash'], _mln_json_encode([
+            'type': 'connection',
+            'op': 'new',
+            'from': hash,
+        ]));
+    } else { /*close*/
         _connSet[hash] = nil;
+        t = _getTunnelByLocalServiceName(msg['data']['name']);
+        if (t) {
+            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                'type': 'connection',
+                'op': 'close',
+                'from': hash,
+            ]));
+        } fi
+        _mln_msg_queue_send(hash, _mln_json_encode([
+            'type': 'localConnection',
+            'op': msg['op'],
+            'from': nil,
+            'to': hash,
+        ]));
     }
-    _mln_msg_queue_send(hash, _mln_json_encode([
-        'code': 200,
-        'msg': 'OK',
-    ]));
 }
 
 tunnels = [];
@@ -247,8 +276,8 @@ while (true) {
             case 'config':
                 configHandle(msg);
                 break;
-            case 'connection':
-                connectionHandle(msg);
+            case 'localConnection':
+                localConnectionHandle(msg);
                 break;
             default:
                 break;
