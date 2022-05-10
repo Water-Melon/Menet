@@ -35,6 +35,7 @@ if (ret['type'] != 'localConnection' || ret['op'] != 'open') {
     mln_tcp_close(fd);
     return;
 } fi
+peer = ret['from'];
 
-mln_print('Connected');//@@@@@@@@@@@@@@@@@@@
 //TODO recv and send and close and clean msg.
+mln_print('Connected: ' + peer);//@@@@@@@@@@@@@@@@@@@

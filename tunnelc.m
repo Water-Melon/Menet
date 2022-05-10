@@ -9,7 +9,7 @@ conf = mln_json_decode(EVAL_DATA);
     ]));
 }
 fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
-if (!fd) {
+if (mln_is_bool(fd) || mln_is_nil(fd)) {
     badRequest(conf['from']);
     return;
 } fi

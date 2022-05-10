@@ -55,6 +55,9 @@
             'op': op,
             'from': msg['from'],
             'to': nil,
+            'data': [
+                'service': msg['data']['service'],
+            ],
         ])));
         if (!ret) {
             _mln_msg_queue_send('manager', _mln_json_encode([
@@ -65,16 +68,47 @@
             ]));
             return false;
         } fi
-    } else {
+    } else if (op == 'close') {
         ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
             'to': msg['to'],
+            'data': [
+                'service': msg['data']['service'],
+            ],
         ])));
         if (!ret)
             return false;
         fi
+    } else if (op == 'fail') {
+        ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
+            'type': 'connection',
+            'op': op,
+            'from': msg['from'],
+            'to': msg['to'],
+            'data': [
+                'service': msg['data']['service'],
+            ],
+        ])));
+        if (!ret)
+            return false;
+        fi
+    } else if (op =='success') {
+        ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
+            'type': 'connection',
+            'op': op,
+            'from': msg['from'],
+            'to': msg['to'],
+            'data': [
+                'service': msg['data']['service'],
+            ],
+        ])));
+        if (!ret)
+            return false;
+        fi
+    } else { //TODO
+        return false;
     }
     return true;
 }
@@ -96,6 +130,9 @@
         'op': msg['op'],
         'from': msg['from'],
         'to': msg['to'],
+        'data': [
+            'service': msg['data']['service'],
+        ],
     ]));
 }
 

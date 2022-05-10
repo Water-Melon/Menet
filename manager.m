@@ -219,6 +219,9 @@ Map {
             'type': 'connection',
             'op': 'new',
             'from': hash,
+            'data': [
+                'service': msg['data']['name'],
+            ],
         ]));
     } else if (op == 'close') {
         hash = msg['from'];
@@ -230,6 +233,9 @@ Map {
                 'op': 'close',
                 'from': hash,
                 'to': msg['to'],
+                'data': [
+                    'service': msg['data']['name'],
+                ],
             ]));
         } fi
         _mln_msg_queue_send(hash, _mln_json_encode([
@@ -254,8 +260,138 @@ Map {
     }
 }
 
+@getTunnelByRemoteServiceName(serviceName) {
+    if (!(_mln_has(_remoteMap.serviceMap, serviceName)))
+        return nil;
+    fi
+    tname = _remoteMap.serviceMap[serviceName];
+    if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname]))
+        return nil;
+    fi
+    return _tunnels[tname];
+}
+
 @connectionNoticeHandle(&msg) {
-    _mln_print(msg);//@@@@@@@@@@@@@@@@@@@
+    s = msg['data']['service'];
+    op = msg['op'];
+    if (op == 'fail') {
+        hash = msg['to'];
+        if (_connSet[hash]) {
+            _connSet[hash] = nil;
+            if (msg['data']['remote'])
+                type = 'remoteConnection';
+            else
+                type = 'localConnection';
+            _mln_msg_queue_send(hash, _mln_json_encode([
+                'type': type,
+                'op': 'close',
+                'from': msg['from'],
+                'to': hash,
+            ]));
+        } fi
+    } else if (op == 'success') {
+        hash = msg['to'];
+        if (_connSet[hash]) {
+            _mln_msg_queue_send(hash, _mln_json_encode([
+                'type': 'localConnection',
+                'op': 'open',
+                'from': msg['from'],
+                'to': hash,
+            ]));
+        } else {
+            t = _getTunnelByLocalServiceName(s);
+            if (t) {
+                _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                    'type': 'connection',
+                    'op': 'fail',
+                    'from': nil,
+                    'to': msg['from'],
+                    'data': [
+                        'service': s,
+                        'remote': true,
+                    ],
+                ]));
+            } fi
+        }
+    } else if (op == 'new') {
+        if (!(_mln_has(_remoteServices, s)) || !(_remoteServices[s])) {
+            t = _getTunnelByRemoteServiceName(s);
+            if (t) {
+                _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                    'type': 'connection',
+                    'op': 'fail',
+                    'from': msg['to'],
+                    'to': msg['from'],
+                    'data': [
+                        'service': s,
+                    ],
+                ]));
+            } fi
+        } else {
+            _mln_eval('remoteService.m', _mln_json_encode([
+                'name': s,
+                'key': _remoteServices[s]['key'],
+                'timeout': _remoteServices[s]['timeout'],
+                'from': msg['from'],
+                'addr': _remoteServices[s]['addr'],
+            ]));
+        }
+    } else { /* close */
+        hash = msg['to'];
+        if (_connSet[hash]) {
+            _connSet[hash] = nil;
+            _mln_msg_queue_send(hash, _mln_json_encode([
+                'type': 'localConnection',
+                'op': 'close',
+                'from': msg['from'],
+                'to': hash,
+            ]));
+        } fi
+    }
+}
+
+@remoteConnectionHandle(&msg) {
+    s = msg['data']['service'];
+    t = _getTunnelByRemoteServiceName(s);
+    if (msg['op'] == 'success') {
+        if (t) {
+            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                'type': 'connection',
+                'op': 'success',
+                'from': msg['from'],
+                'to': msg['to'],
+                'data': [
+                    'service': s,
+                ],
+            ]));
+            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+                'type': 'remoteConnection',
+                'op': 'success',
+            ]));
+        } else {
+            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+                'type': 'remoteConnection',
+                'op': 'close',
+                'data': [
+                    'msg': 'tunnel not found',
+                ],
+            ]));
+        }
+    } else if (msg['op'] == 'fail') {
+        if (t) {
+            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                'type': 'connection',
+                'op': 'fail',
+                'from': msg['from'],
+                'to': msg['to'],
+                'data': [
+                    'service': s,
+                ],
+            ]));
+        } fi
+    } else {
+        //TODO
+    }
 }
 
 tunnels = [];
@@ -302,6 +438,9 @@ while (true) {
                 break;
             case 'connectionNotice':
                 connectionNoticeHandle(msg);
+                break;
+            case 'remoteConnection':
+                remoteConnectionHandle(msg);
                 break;
             default:
                 break;
