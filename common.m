@@ -11,6 +11,27 @@
     }
 }
 
+@cleanTunnelMsg(hash) {
+    cnt = 0;
+    while (cnt < 30) {
+        ret = _mln_msg_queue_recv(hash, 100000);
+        if (!ret) {
+            ++cnt;
+        } else {
+            cnt = 0;
+            ret = _mln_json_decode(ret);
+            if (ret['type'] == 'connection' && ret['type'] == 'new') {
+                _mln_msg_queue_send('manager', _mln_json_encode([
+                    'type': 'localConnection',
+                    'op': 'openAckFail',
+                    'from': nil,
+                    'to': ret['from'],
+                ]));
+            } fi
+        }
+    }
+}
+
 @closeConnection(fd, hash, name) {
     _mln_tcp_close(fd);
 
@@ -23,7 +44,7 @@
         ],
     ]));
 
-    _cleanMsg(hash);
+    _cleanTunnelMsg(hash);
 }
 
 @tunnelMsgConnectionHandle(fd, hash, msg) {
@@ -66,7 +87,7 @@
             'msg': "OK",
         ]));
     } fi
-    _cleanMsg(hash);
+    _cleanTunnelMsg(hash);
 }
 
 @tunnelLoop(fd, hash, name, &rbuf) {
