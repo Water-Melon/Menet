@@ -37,5 +37,26 @@ if (ret['type'] != 'localConnection' || ret['op'] != 'open') {
 } fi
 peer = ret['from'];
 
-//TODO recv and send and close and clean msg.
-mln_print('Connected: ' + peer);//@@@@@@@@@@@@@@@@@@@
+cnt = 0;
+step = 10;
+
+while (true) {
+//TODO msg, recv and send and close and clean msg.
+    ret = mln_msg_queue_recv(hash, 10000);
+    if (ret) {
+        if (!(serviceMsgProcess(fd, hash, name, ret, 'remote', peer))) {
+            closeServiceConnection(fd, hash, name, 'remote', peer);
+            return;
+        } fi
+    } fi
+
+    ret = mln_tcp_recv(fd, step);
+    if ((cnt >= timeout) || mln_is_bool(ret)) {
+        closeServiceConnection(fd, hash, name, 'local', peer);
+        return;
+    } else if (!(mln_is_nil(ret))) {
+        cnt = 0;
+    } else {
+        cnt += step;
+    }
+}

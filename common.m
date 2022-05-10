@@ -32,7 +32,35 @@
     }
 }
 
-@closeConnection(fd, hash, name) {
+@closeServiceConnection(fd, hash, name, type, peer) {
+    _mln_tcp_close(fd);
+
+    if (type == 'local') {
+        _mln_msg_queue_send('manager', _mln_json_encode([
+            'type': 'localConnection',
+            'op': 'close',
+            'from': hash,
+            'to': peer,
+            'data': [
+                'name': name,
+            ],
+        ]));
+    } else {
+        _mln_msg_queue_send('manager', _mln_json_encode([
+            'type': 'remoteConnection',
+            'op': 'close',
+            'from': hash,
+            'to': peer,
+            'data': [
+                'service': name,
+            ],
+        ]));
+    }
+
+    _cleanMsg(hash);
+}
+
+@closeTunnelConnection(fd, hash, name) {
     _mln_tcp_close(fd);
 
     _mln_msg_queue_send('manager', _mln_json_encode([
@@ -76,6 +104,7 @@
             'to': msg['to'],
             'data': [
                 'service': msg['data']['service'],
+                'remote': msg['data']['remote'],
             ],
         ])));
         if (!ret)
@@ -132,6 +161,7 @@
         'to': msg['to'],
         'data': [
             'service': msg['data']['service'],
+            'remote': msg['data']['remote'],
         ],
     ]));
 }
@@ -148,7 +178,7 @@
                 case 'connection':
                     ret = _tunnelMsgConnectionHandle(fd, hash, msg);
                     if (!ret) {
-                        _closeConnection(fd, hash, name);
+                        _closeTunnelConnection(fd, hash, name);
                         return;
                     } fi
                     break;
@@ -159,7 +189,7 @@
     
         ret = _mln_tcp_recv(fd, 10);
         if (_mln_is_bool(ret)) {
-            _closeConnection(fd, hash, name);
+            _closeTunnelConnection(fd, hash, name);
             return;
         } else if (!(_mln_is_nil(ret))) {
             rbuf += ret;
@@ -176,10 +206,31 @@
                         break;
                 }
                 if (!ret) {
-                    _closeConnection(fd, hash, name);
+                    _closeTunnelConnection(fd, hash, name);
                     return;
                 } fi
             } fi
         } fi
     }
 }
+
+@serviceMsgProcess(fd, hash, name, &msg, type, peer) {
+    msg = _mln_json_decode(msg);
+    t = msg['type'];
+    switch (t) {
+        case 'remoteConnection':
+            if (msg['op'] == 'close') {
+                _closeServiceConnection(fd, hash, name, type, peer);
+            } fi
+            break;
+        case 'localConnection':
+            if (msg['op'] == 'close') {
+                _closeServiceConnection(fd, hash, name, type, peer);
+            } fi
+            break;
+        default:
+            break;//TODO
+    }
+    return true;
+}
+

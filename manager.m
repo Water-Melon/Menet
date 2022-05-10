@@ -235,6 +235,7 @@ Map {
                 'to': msg['to'],
                 'data': [
                     'service': msg['data']['name'],
+                    'remote': true,
                 ],
             ]));
         } fi
@@ -261,13 +262,13 @@ Map {
 }
 
 @getTunnelByRemoteServiceName(serviceName) {
-    if (!(_mln_has(_remoteMap.serviceMap, serviceName)))
+    if (!(_mln_has(_remoteMap.serviceMap, serviceName))) {
         return nil;
-    fi
+    } fi
     tname = _remoteMap.serviceMap[serviceName];
-    if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname]))
+    if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname])) {
         return nil;
-    fi
+    } fi
     return _tunnels[tname];
 }
 
@@ -340,8 +341,12 @@ Map {
         hash = msg['to'];
         if (_connSet[hash]) {
             _connSet[hash] = nil;
+            if (msg['data']['remote'])
+                type = 'remoteConnection';
+            else
+                type = 'localConnection';
             _mln_msg_queue_send(hash, _mln_json_encode([
-                'type': 'localConnection',
+                'type': type,
                 'op': 'close',
                 'from': msg['from'],
                 'to': hash,
@@ -355,6 +360,7 @@ Map {
     t = _getTunnelByRemoteServiceName(s);
     if (msg['op'] == 'success') {
         if (t) {
+            _connSet[msg['from']] = true;
             _mln_msg_queue_send(t['hash'], _mln_json_encode([
                 'type': 'connection',
                 'op': 'success',
@@ -389,6 +395,26 @@ Map {
                 ],
             ]));
         } fi
+    } else if (msg['op'] == 'close') {
+        hash = msg['from'];
+        _connSet[hash] = nil;
+        if (t) {
+            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                'type': 'connection',
+                'op': 'close',
+                'from': hash,
+                'to': msg['to'],
+                'data': [
+                    'service': msg['data']['name'],
+                ],
+            ]));
+        } fi
+        _mln_msg_queue_send(hash, _mln_json_encode([
+            'type': 'remoteConnection',
+            'op': op,
+            'from': nil,
+            'to': hash,
+        ]));
     } else {
         //TODO
     }
