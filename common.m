@@ -52,7 +52,7 @@
             'from': hash,
             'to': peer,
             'data': [
-                'service': name,
+                'name': name,
             ],
         ]));
     }
@@ -84,7 +84,7 @@
             'from': msg['from'],
             'to': nil,
             'data': [
-                'service': msg['data']['service'],
+                'name': msg['data']['name'],
             ],
         ])));
         if (!ret) {
@@ -103,7 +103,7 @@
             'from': msg['from'],
             'to': msg['to'],
             'data': [
-                'service': msg['data']['service'],
+                'name': msg['data']['name'],
                 'remote': msg['data']['remote'],
             ],
         ])));
@@ -117,27 +117,25 @@
             'from': msg['from'],
             'to': msg['to'],
             'data': [
-                'service': msg['data']['service'],
+                'name': msg['data']['name'],
             ],
         ])));
         if (!ret)
             return false;
         fi
-    } else if (op =='success') {
+    } else { /* op =='success' */
         ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
             'to': msg['to'],
             'data': [
-                'service': msg['data']['service'],
+                'name': msg['data']['name'],
             ],
         ])));
         if (!ret)
             return false;
         fi
-    } else { //TODO
-        return false;
     }
     return true;
 }
@@ -160,10 +158,31 @@
         'from': msg['from'],
         'to': msg['to'],
         'data': [
-            'service': msg['data']['service'],
+            'name': msg['data']['name'],
             'remote': msg['data']['remote'],
         ],
     ]));
+}
+
+@tunnelMsgDataHandle(fd, &msg) {
+    ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode(msg)));
+    if (!ret) {
+        if (msg['data']['type'] == 'local') {
+            type = 'localConnection';
+        } else {
+            type = 'remoteConnection';
+        }
+        _mln_msg_queue_send('manager', _mln_json_encode([
+            'type': type,
+            'op': 'close',
+            'from': msg['from'],
+            'to': msg['to'],
+            'data': [
+                'name': msg['data']['name'],
+            ],
+        ]));
+    } fi
+    return true;
 }
 
 @tunnelLoop(fd, hash, name, &rbuf) {
@@ -177,6 +196,13 @@
                     return;
                 case 'connection':
                     ret = _tunnelMsgConnectionHandle(fd, hash, msg);
+                    if (!ret) {
+                        _closeTunnelConnection(fd, hash, name);
+                        return;
+                    } fi
+                    break;
+                case 'data':
+                    ret = _tunnelMsgDataHandle(fd, msg);
                     if (!ret) {
                         _closeTunnelConnection(fd, hash, name);
                         return;
@@ -220,17 +246,31 @@
     switch (t) {
         case 'remoteConnection':
             if (msg['op'] == 'close') {
-                _closeServiceConnection(fd, hash, name, type, peer);
+                return false;
             } fi
             break;
         case 'localConnection':
             if (msg['op'] == 'close') {
-                _closeServiceConnection(fd, hash, name, type, peer);
+                return false;
             } fi
             break;
         default:
             break;//TODO
     }
+    return true;
+}
+
+@serviceDataProcess(fd, hash, name, peer, key, type, &data) {
+    _mln_msg_queue_send('manager', _mln_json_encode([
+        'type': 'serviceIO',
+        'op': 'input',
+        'from': hash,
+        'to': peer,
+        'data': [
+            'name': name,
+            'type': type,
+        ],
+    ]));
     return true;
 }
 

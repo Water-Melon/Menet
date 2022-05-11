@@ -14,7 +14,7 @@ if (mln_is_bool(fd) || mln_is_nil(fd)) {
         'from': nil,
         'to': peer,
         'data': [
-            'service': name,
+            'name': name,
         ],
     ]));
     return;
@@ -27,7 +27,7 @@ mln_msg_queue_send('manager', mln_json_encode([
     'from': hash,
     'to': peer,
     'data': [
-        'service': name,
+        'name': name,
     ],
 ]));
 ret = mln_json_decode(mln_msg_queue_recv(hash));
@@ -50,11 +50,15 @@ while (true) {
     } fi
 
     ret = mln_tcp_recv(fd, step);
-    if ((cnt >= timeout) || mln_is_bool(ret)) {
+    if ((mln_is_int(timeout) && (cnt >= timeout)) || mln_is_bool(ret)) {
         closeServiceConnection(fd, hash, name, 'remote', peer);
         return;
     } else if (!(mln_is_nil(ret))) {
         cnt = 0;
+        if (!(serviceDataProcess(fd, hash, name, peer, key, 'remote', ret))) {
+            closeServiceConnection(fd, hash, name, 'remote', peer);
+            return;
+        } fi
     } else {
         cnt += step;
     }

@@ -220,7 +220,7 @@ Map {
             'op': 'new',
             'from': hash,
             'data': [
-                'service': msg['data']['name'],
+                'name': msg['data']['name'],
             ],
         ]));
     } else if (op == 'close') {
@@ -234,7 +234,7 @@ Map {
                 'from': hash,
                 'to': msg['to'],
                 'data': [
-                    'service': msg['data']['name'],
+                    'name': msg['data']['name'],
                     'remote': true,
                 ],
             ]));
@@ -245,7 +245,7 @@ Map {
             'from': nil,
             'to': hash,
         ]));
-    } else if (op == 'openAckFail') {
+    } else { /* op == 'openAckFail' */
         hash = msg['to'];
         if (_connSet[hash]) {
             _connSet[hash] = nil;
@@ -256,8 +256,6 @@ Map {
                 'to': hash,
             ]));
         } fi
-    } else {
-        //TODO
     }
 }
 
@@ -273,7 +271,7 @@ Map {
 }
 
 @connectionNoticeHandle(&msg) {
-    s = msg['data']['service'];
+    s = msg['data']['name'];
     op = msg['op'];
     if (op == 'fail') {
         hash = msg['to'];
@@ -308,7 +306,7 @@ Map {
                     'from': nil,
                     'to': msg['from'],
                     'data': [
-                        'service': s,
+                        'name': s,
                         'remote': true,
                     ],
                 ]));
@@ -324,7 +322,7 @@ Map {
                     'from': msg['to'],
                     'to': msg['from'],
                     'data': [
-                        'service': s,
+                        'name': s,
                     ],
                 ]));
             } fi
@@ -356,7 +354,7 @@ Map {
 }
 
 @remoteConnectionHandle(&msg) {
-    s = msg['data']['service'];
+    s = msg['data']['name'];
     t = _getTunnelByRemoteServiceName(s);
     if (msg['op'] == 'success') {
         if (t) {
@@ -367,7 +365,7 @@ Map {
                 'from': msg['from'],
                 'to': msg['to'],
                 'data': [
-                    'service': s,
+                    'name': s,
                 ],
             ]));
             _mln_msg_queue_send(msg['from'], _mln_json_encode([
@@ -391,11 +389,11 @@ Map {
                 'from': msg['from'],
                 'to': msg['to'],
                 'data': [
-                    'service': s,
+                    'name': s,
                 ],
             ]));
         } fi
-    } else if (msg['op'] == 'close') {
+    } else { /* msg['op'] == 'close' */
         hash = msg['from'];
         _connSet[hash] = nil;
         if (t) {
@@ -405,7 +403,7 @@ Map {
                 'from': hash,
                 'to': msg['to'],
                 'data': [
-                    'service': msg['data']['name'],
+                    'name': msg['data']['name'],
                 ],
             ]));
         } fi
@@ -415,9 +413,35 @@ Map {
             'from': nil,
             'to': hash,
         ]));
-    } else {
-        //TODO
     }
+}
+
+@serviceIOHandle(&msg) {
+    if (msg['data']['type'] == 'local') {
+        t = _getTunnelByLocalServiceName(msg['data']['name']);
+        type = 'localConnection';
+    } else { /* remote */
+        t = _getTunnelByRemoteServiceName(msg['data']['name']);
+        type = 'remoteConnection';
+    }
+    if (!t) {
+        _mln_msg_queue_send(msg['from'], _mln_json_encode([
+            'type': type,
+            'op': 'close',
+        ]));
+        return;
+    } fi
+
+    _mln_msg_queue_send(t['hash'], _mln_json_encode([
+        'type': 'data',
+        'op': 'send',
+        'from': msg['from'],
+        'to': msg['to'],
+        'data': [
+            'name': msg['data']['name'],
+            'type': msg['data']['type'],
+        ],
+    ]));
 }
 
 tunnels = [];
@@ -467,6 +491,9 @@ while (true) {
                 break;
             case 'remoteConnection':
                 remoteConnectionHandle(msg);
+                break;
+            case 'serviceIO':
+                serviceIOHandle(msg);
                 break;
             default:
                 break;

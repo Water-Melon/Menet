@@ -51,11 +51,15 @@ while (true) {
     } fi
 
     ret = mln_tcp_recv(fd, step);
-    if ((cnt >= timeout) || mln_is_bool(ret)) {
+    if ((mln_is_int(timeout) && (cnt >= timeout)) || mln_is_bool(ret)) {
         closeServiceConnection(fd, hash, name, 'local', peer);
         return;
     } else if (!(mln_is_nil(ret))) {
         cnt = 0;
+        if (!(serviceDataProcess(fd, hash, name, peer, key, 'local', ret))) {
+            closeServiceConnection(fd, hash, name, 'local', peer);
+            return;
+        } fi
     } else {
         cnt += step;
     }
