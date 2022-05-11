@@ -27,7 +27,7 @@
                     'from': nil,
                     'to': ret['from'],
                 ]));
-            } else if (ret['type'] == 'data') {
+            } else if (ret['type'] == 'serviceIO') {
                 _mln_msg_queue_send('manager', _mln_json_encode([
                     'type': 'serviceClose',
                     'op': 'immediate',
