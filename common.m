@@ -20,14 +20,25 @@
         } else {
             cnt = 0;
             ret = _mln_json_decode(ret);
-            if (ret['type'] == 'connection' && ret['type'] == 'new') {
+            if (ret['type'] == 'connection' && ret['op'] == 'new') {
                 _mln_msg_queue_send('manager', _mln_json_encode([
                     'type': 'localConnection',
                     'op': 'openAckFail',
                     'from': nil,
                     'to': ret['from'],
                 ]));
-            } fi //TODO
+            } else if (ret['type'] == 'data') {
+                _mln_msg_queue_send('manager', _mln_json_encode([
+                    'type': 'serviceClose',
+                    'op': 'immediate',
+                    'from': msg['from'],
+                    'to': msg['to'],
+                    'data': [
+                       'name': msg['data']['name'],
+                        'type': msg['data']['type'],
+                    ],
+                ]));
+            } fi
         }
     }
 }
@@ -201,7 +212,7 @@
                         return;
                     } fi
                     break;
-                case 'data':
+                case 'serviceIO':
                     ret = _tunnelMsgDataHandle(fd, msg);
                     if (!ret) {
                         _closeTunnelConnection(fd, hash, name);
@@ -269,6 +280,7 @@
         'data': [
             'name': name,
             'type': type,
+            'data': _mln_base64(_mln_rc4(data, key), 'encode'),
         ],
     ]));
     return true;

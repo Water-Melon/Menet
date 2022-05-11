@@ -259,6 +259,21 @@ Map {
     }
 }
 
+@serviceCloseHandle(&msg) {
+    hash = msg['from'];
+    if (msg['data']['type'] == 'local')
+        type = 'localConnection';
+    else
+        type = 'remoteConnection';
+    if (_connSet[hash]) {
+        _connSet[hash] = nil;
+        _mln_msg_queue_send(hash, _mln_json_encode([
+            'type': type,
+            'op': 'close',
+        ]));
+    } fi
+}
+
 @getTunnelByRemoteServiceName(serviceName) {
     if (!(_mln_has(_remoteMap.serviceMap, serviceName))) {
         return nil;
@@ -432,16 +447,7 @@ Map {
         return;
     } fi
 
-    _mln_msg_queue_send(t['hash'], _mln_json_encode([
-        'type': 'data',
-        'op': 'send',
-        'from': msg['from'],
-        'to': msg['to'],
-        'data': [
-            'name': msg['data']['name'],
-            'type': msg['data']['type'],
-        ],
-    ]));
+    _mln_msg_queue_send(t['hash'], _mln_json_encode(msg));
 }
 
 tunnels = [];
@@ -494,6 +500,9 @@ while (true) {
                 break;
             case 'serviceIO':
                 serviceIOHandle(msg);
+                break;
+            case 'serviceClose':
+                serviceCloseHandle(msg);
                 break;
             default:
                 break;
