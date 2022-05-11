@@ -432,22 +432,42 @@ Map {
 }
 
 @serviceIOHandle(&msg) {
-    if (msg['data']['type'] == 'local') {
-        t = _getTunnelByLocalServiceName(msg['data']['name']);
-        type = 'localConnection';
-    } else { /* remote */
-        t = _getTunnelByRemoteServiceName(msg['data']['name']);
-        type = 'remoteConnection';
-    }
-    if (!t) {
-        _mln_msg_queue_send(msg['from'], _mln_json_encode([
-            'type': type,
-            'op': 'close',
-        ]));
-        return;
-    } fi
+    if (msg['op'] == 'input') {
+        if (msg['data']['type'] == 'local') {
+            t = _getTunnelByLocalServiceName(msg['data']['name']);
+            type = 'localConnection';
+        } else { /* remote */
+            t = _getTunnelByRemoteServiceName(msg['data']['name']);
+            type = 'remoteConnection';
+        }
+        if (!t) {
+            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+                'type': type,
+                'op': 'close',
+            ]));
+            return;
+        } fi
 
-    _mln_msg_queue_send(t['hash'], _mln_json_encode(msg));
+        _mln_msg_queue_send(t['hash'], _mln_json_encode(msg));
+    } else {
+        hash = msg['to'];
+        if (_mln_has(_connSet, hash) && _connSet[hash]) {
+            _mln_msg_queue_send(hash, _mln_json_encode(msg));
+        } else {
+            t = _getTunnelByRemoteServiceName(msg['data']['name']);
+            if (t) {
+                _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                    'type': 'connection',
+                    'op': 'close',
+                    'from': hash,
+                    'to': msg['from'],
+                    'data': [
+                        'name': msg['data']['name'],
+                    ],
+                ]));
+            } fi
+        }
+    }
 }
 
 tunnels = [];

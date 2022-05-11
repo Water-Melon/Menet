@@ -196,6 +196,11 @@
     return true;
 }
 
+@tunnelNetServiceIOHandle(frame) {
+    frame['op'] = 'output';
+    _mln_msg_queue_send('manager', _mln_json_encode(frame));
+}
+
 @tunnelLoop(fd, hash, name, &rbuf) {
     while (true) {
         msg = _mln_msg_queue_recv(hash, 10000);
@@ -239,7 +244,10 @@
                     case 'connection':
                         _tunnelNetConnectionHandle(frame);
                         break;
-                    default: //TODO
+                    case 'serviceIO':
+                        _tunnelNetServiceIOHandle(frame);
+                        break;
+                    default:
                         break;
                 }
                 if (!ret) {
@@ -251,7 +259,7 @@
     }
 }
 
-@serviceMsgProcess(fd, hash, name, &msg, type, peer) {
+@serviceMsgProcess(fd, hash, name, &msg, type, peer, key) {
     msg = _mln_json_decode(msg);
     t = msg['type'];
     switch (t) {
@@ -265,8 +273,14 @@
                 return false;
             } fi
             break;
+        case 'serviceIO':
+            data = _mln_rc4(_mln_base64(msg['data']['data'], 'decode'), key);
+            if (!(_mln_tcp_send(fd, data)))
+                return false;
+            fi
+            break;
         default:
-            break;//TODO
+            return false;
     }
     return true;
 }

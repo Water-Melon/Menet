@@ -41,10 +41,9 @@ cnt = 0;
 step = 10;
 
 while (true) {
-//TODO msg, recv and send and close and clean msg.
     ret = mln_msg_queue_recv(hash, 10000);
     if (ret) {
-        if (!(serviceMsgProcess(fd, hash, name, ret, 'remote', peer))) {
+        if (!(serviceMsgProcess(fd, hash, name, ret, 'remote', peer, key))) {
             closeServiceConnection(fd, hash, name, 'remote', peer);
             return;
         } fi
