@@ -43,8 +43,8 @@ step = 10;
 while (true) {
     ret = mln_msg_queue_recv(hash, 10000);
     if (ret) {
-        if (!(serviceMsgProcess(fd, hash, name, ret, 'remote', peer, key))) {
-            closeServiceConnection(fd, hash, name, 'remote', peer);
+        if (!(serviceMsgProcess(fd, hash, name, ret, 'local', peer, key))) {
+            closeServiceConnection(fd, hash, name, 'local', peer);
             return;
         } fi
     } fi

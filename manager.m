@@ -151,6 +151,7 @@ Map {
                 'local': _localMap.serviceMap,
                 'remote': _remoteMap.serviceMap,
             ],
+            'connections': _connSet,
         ],
     ]));
 }

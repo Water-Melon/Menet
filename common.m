@@ -35,7 +35,7 @@
                     'to': msg['to'],
                     'data': [
                        'name': msg['data']['name'],
-                        'type': msg['data']['type'],
+                       'type': msg['data']['type'],
                     ],
                 ]));
             } fi
@@ -236,6 +236,7 @@
             ret = true;
             frame = _frameParse(rbuf);
             if (frame) {
+_mln_print(frame);//@@@@@@@@@@@@@@@@@@@
                 frame = _mln_json_decode(frame);
                 type = frame['type'];
                 switch(type) {
