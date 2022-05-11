@@ -20,7 +20,7 @@ if (mln_is_bool(fd) || mln_is_nil(fd)) {
     return;
 } fi
 
-hash = mln_md5('' + fd + mln_time());
+hash = mln_md5('' + peer + fd + mln_time());
 mln_msg_queue_send('manager', mln_json_encode([
     'type': 'remoteConnection',
     'op': 'success',

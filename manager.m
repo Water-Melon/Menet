@@ -447,7 +447,6 @@ Map {
             ]));
             return;
         } fi
-
         _mln_msg_queue_send(t['hash'], _mln_json_encode(msg));
     } else {
         hash = msg['to'];

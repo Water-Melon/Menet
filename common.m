@@ -44,8 +44,6 @@
 }
 
 @closeServiceConnection(fd, hash, name, type, peer) {
-    _mln_tcp_close(fd);
-
     if (type == 'local') {
         _mln_msg_queue_send('manager', _mln_json_encode([
             'type': 'localConnection',
@@ -69,11 +67,10 @@
     }
 
     _cleanMsg(hash);
+    _mln_tcp_close(fd);
 }
 
 @closeTunnelConnection(fd, hash, name) {
-    _mln_tcp_close(fd);
-
     _mln_msg_queue_send('manager', _mln_json_encode([
         'type': 'tunnelDisconnected',
         'op': nil,
@@ -84,6 +81,7 @@
     ]));
 
     _cleanTunnelMsg(hash);
+    _mln_tcp_close(fd);
 }
 
 @tunnelMsgConnectionHandle(fd, hash, msg) {
