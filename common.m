@@ -231,30 +231,33 @@
         if (_mln_is_bool(ret)) {
             _closeTunnelConnection(fd, hash, name);
             return;
-        } else if (!(_mln_is_nil(ret))) {
-            rbuf += ret;
-            ret = true;
-            frame = _frameParse(rbuf);
-            if (frame) {
-_mln_print(frame);//@@@@@@@@@@@@@@@@@@@
-                frame = _mln_json_decode(frame);
-                type = frame['type'];
-                switch(type) {
-                    case 'connection':
-                        _tunnelNetConnectionHandle(frame);
-                        break;
-                    case 'serviceIO':
-                        _tunnelNetServiceIOHandle(frame);
-                        break;
-                    default:
-                        break;
-                }
-                if (!ret) {
-                    _closeTunnelConnection(fd, hash, name);
-                    return;
+        } else {
+            if (!(_mln_is_nil(ret)))
+                rbuf += ret;
+            fi
+            if (rbuf) {
+                ret = true;
+                frame = _frameParse(rbuf);
+                if (frame) {
+                    frame = _mln_json_decode(frame);
+                    type = frame['type'];
+                    switch(type) {
+                        case 'connection':
+                            _tunnelNetConnectionHandle(frame);
+                            break;
+                        case 'serviceIO':
+                            _tunnelNetServiceIOHandle(frame);
+                            break;
+                        default:
+                            break;
+                    }
+                    if (!ret) {
+                        _closeTunnelConnection(fd, hash, name);
+                        return;
+                    } fi
                 } fi
             } fi
-        } fi
+        }
     }
 }
 
