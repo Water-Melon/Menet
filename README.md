@@ -92,7 +92,7 @@ http://ip:port/service
 
 - HTTP Body:
 
-  ```json
+  ```
   {
       "name": "service name",
       "key": "rc4 key",
@@ -165,4 +165,4 @@ You can now check the configuration of both Menet services using the `config` re
 
 [GNU Affero General Public License v3.0](https://github.com/Water-Melon/Menet/blob/master/LICENSE)
 
-Copyright (c) 2014-present, Niklaus F. Schen
+Copyright (c) 2022-present, Niklaus F. Schen
