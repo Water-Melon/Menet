@@ -1,13 +1,18 @@
 #include "common.m"
+json = import('json');
+md5 = import('md5');
+sys = import('sys');
+net = import('net');
+mq = import('mq');
 
-conf = mln_json_decode(EVAL_DATA);
+conf = json.decode(EVAL_DATA);
 name = conf['name'];
 fd = conf['fd'];
 key = conf['key'];
 timeout = conf['timeout'];
-hash = mln_md5('' + fd + mln_time());
+hash = md5.md5('' + fd + sys.time());
 
-mln_msg_queue_send('manager', mln_json_encode([
+mq.send('manager', json.encode([
     'type': 'localConnection',
     'op': 'open',
     'from': hash,
@@ -16,10 +21,10 @@ mln_msg_queue_send('manager', mln_json_encode([
     ],
 ]));
 
-ret = mln_msg_queue_recv(hash, 3000000);
+ret = mq.recv(hash, 3000000);
 if (!ret) {
-    mln_tcp_close(fd);
-    mln_msg_queue_send('manager', mln_json_encode([
+    net.tcp_close(fd);
+    mq.send('manager', json.encode([
         'type': 'localConnection',
         'op': 'close',
         'from': hash,
@@ -30,9 +35,9 @@ if (!ret) {
     _cleanMsg(hash);
     return;
 } fi
-ret = mln_json_decode(ret);
+ret = json.decode(ret);
 if (ret['type'] != 'localConnection' || ret['op'] != 'open') {
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
 peer = ret['from'];
@@ -41,7 +46,7 @@ cnt = 0;
 step = 10;
 
 while (true) {
-    ret = mln_msg_queue_recv(hash, 10000);
+    ret = mq.recv(hash, 10000);
     if (ret) {
         if (!(serviceMsgProcess(fd, hash, name, ret, 'local', peer, key))) {
             closeServiceConnection(fd, hash, name, 'local', peer);
@@ -49,11 +54,11 @@ while (true) {
         } fi
     } fi
 
-    ret = mln_tcp_recv(fd, step);
-    if ((mln_is_int(timeout) && (cnt >= timeout)) || mln_is_bool(ret)) {
+    ret = net.tcp_recv(fd, step);
+    if ((sys.is_int(timeout) && (cnt >= timeout)) || sys.is_bool(ret)) {
         closeServiceConnection(fd, hash, name, 'local', peer);
         return;
-    } else if (!(mln_is_nil(ret))) {
+    } else if (!(sys.is_nil(ret))) {
         cnt = 0;
         if (!(serviceDataProcess(fd, hash, name, peer, key, 'local', ret))) {
             closeServiceConnection(fd, hash, name, 'local', peer);

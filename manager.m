@@ -1,3 +1,9 @@
+sys = import('sys');
+mq = import('mq');
+json = import('json');
+md5 = import('md5');
+net = import('net');
+
 Map {
     tunnelMap;
     serviceMap;
@@ -10,12 +16,12 @@ Map {
 @tunnelHandle(&msg) {
     name = msg['data']['name'];
     notExist = true;
-    if (_mln_has(_tunnels, name) && _tunnels[name]) {
+    if (_sys.has(_tunnels, name) && _tunnels[name]) {
         notExist = false;
         if (msg['op'] == 'remove')
             from = msg['from'];
         fi
-        _mln_msg_queue_send(_tunnels[name]['hash'], _mln_json_encode([
+        _mq.send(_tunnels[name]['hash'], _json.encode([
             'type': 'disconnect',
             'op': nil,
             'from': from,
@@ -24,8 +30,8 @@ Map {
     } fi
     if (msg['op'] == 'update') {
         if (msg['data']['dest']) {
-            hash = _mln_md5(name + _mln_time());
-            _mln_eval('tunnelc.m', _mln_json_encode([
+            hash = _md5.md5(name + _sys.time());
+            _eval('tunnelc.m', _json.encode([
                 'from': msg['from'],
                 'dest': msg['data']['dest'],
                 'name': msg['data']['name'],
@@ -36,13 +42,13 @@ Map {
                 'hash': msg['from'],
                 'dest': msg['data']['dest'],
             ];
-            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+            _mq.send(msg['from'], _json.encode([
                 'code': 200,
                 'msg': 'OK',
             ]));
         }
     } else if (notExist) {
-        _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        _mq.send(msg['from'], _json.encode([
             'code': 200,
             'msg': 'OK',
         ]));
@@ -51,14 +57,14 @@ Map {
 
 @localServiceHandle(&msg) {
     name = msg['data']['name'];
-    if (_mln_has(_localServices, name) && _localServices[name]) {
-        _mln_tcp_close(_localServices[name]['fd']);
+    if (_sys.has(_localServices, name) && _localServices[name]) {
+        _net.tcp_close(_localServices[name]['fd']);
         _localServices[name] = nil;
     } fi
     if (msg['op'] == 'update') {
-        fd = _mln_tcp_listen(msg['data']['addr'][0], msg['data']['addr'][1]);
-        if (!fd && _mln_is_bool(fd)) {
-            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        fd = _net.tcp_listen(msg['data']['addr'][0], msg['data']['addr'][1]);
+        if (!fd && _sys.is_bool(fd)) {
+            _mq.send(msg['from'], _json.encode([
                 'code': 500,
                 'msg': 'Internal Server Error',
             ]));
@@ -72,7 +78,7 @@ Map {
             'timeout': msg['data']['timeout'],
         ];
     } fi
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
@@ -80,7 +86,7 @@ Map {
 
 @remoteServiceHandle(&msg) {
     name = msg['data']['name'];
-    if (_mln_has(_remoteServices, name))
+    if (_sys.has(_remoteServices, name))
         _remoteServices[name] = nil;
     fi
     if (msg['op'] == 'update') {
@@ -91,7 +97,7 @@ Map {
             'timeout': msg['data']['timeout'],
         ];
     } fi
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
@@ -100,9 +106,9 @@ Map {
 @bindLocalHandle(&msg) {
     t = msg['data']['tunnel'];
     s = msg['data']['service'];
-    if (_mln_has(_localMap.serviceMap, s)) {
-        _localMap.serviceMap = _mln_key_diff(_localMap.serviceMap, [s:nil]);
-        _localMap.tunnelMap[t] = _mln_diff(_localMap.tunnelMap[t], [s]);
+    if (_sys.has(_localMap.serviceMap, s)) {
+        _localMap.serviceMap = _sys.key_diff(_localMap.serviceMap, [s:nil]);
+        _localMap.tunnelMap[t] = _sys.diff(_localMap.tunnelMap[t], [s]);
     } fi
     if (msg['op'] == 'update') {
         _localMap.serviceMap[s] = t;
@@ -111,7 +117,7 @@ Map {
         } fi
         _localMap.tunnelMap[t][] = s;
     } fi
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
@@ -120,9 +126,9 @@ Map {
 @bindRemoteHandle(&msg) {
     t = msg['data']['tunnel'];
     s = msg['data']['service'];
-    if (_mln_has(_remoteMap.serviceMap, s)) {
-        _remoteMap.serviceMap = _mln_key_diff(_remoteMap.serviceMap, [s:nil]);
-        _remoteMap.tunnelMap[t] = _mln_diff(_remoteMap.tunnelMap[t], [s]);
+    if (_sys.has(_remoteMap.serviceMap, s)) {
+        _remoteMap.serviceMap = _sys.key_diff(_remoteMap.serviceMap, [s:nil]);
+        _remoteMap.tunnelMap[t] = _sys.diff(_remoteMap.tunnelMap[t], [s]);
     } fi
     if (msg['op'] == 'update') {
         _remoteMap.serviceMap[s] = t;
@@ -131,14 +137,14 @@ Map {
         } fi
         _remoteMap.tunnelMap[t][] = s;
     } fi
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
 @configHandle(&msg) {
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
         'data': [
@@ -158,14 +164,14 @@ Map {
 
 @tunnelConnectedHandle(&msg) {
     name = msg['data']['name'];
-    if (_mln_has(_tunnels, name) && _tunnels[name]) {
-        _mln_msg_queue_send(_tunnels[name]['hash'], _mln_json_encode([
+    if (_sys.has(_tunnels, name) && _tunnels[name]) {
+        _mq.send(_tunnels[name]['hash'], _json.encode([
             'type': 'disconnect',
             'op': nil,
             'from': nil,
         ]));
         _tunnels[name] = nil;
-        _mln_msg_queue_send(msg['from'], _mln_json_encode([
+        _mq.send(msg['from'], _json.encode([
             'code': 400,
             'msg': 'Bad Request',
         ]));
@@ -175,7 +181,7 @@ Map {
         'hash': msg['from'],
         'dest': msg['data']['dest'],
     ];
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
@@ -183,21 +189,21 @@ Map {
 
 @tunnelDisconnectedHandle(&msg) {
     name = msg['data']['name'];
-    if (_mln_has(_tunnels, name) && _tunnels[name]) {
+    if (_sys.has(_tunnels, name) && _tunnels[name]) {
         _tunnels[name] = nil;
     } fi
-    _mln_msg_queue_send(msg['from'], _mln_json_encode([
+    _mq.send(msg['from'], _json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
 @getTunnelByLocalServiceName(serviceName) {
-    if (!(_mln_has(_localMap.serviceMap, serviceName)))
+    if (!(_sys.has(_localMap.serviceMap, serviceName)))
         return nil;
     fi
     tname = _localMap.serviceMap[serviceName];
-    if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname]))
+    if (!(_sys.has(_tunnels, tname)) || !(_tunnels[tname]))
         return nil;
     fi
     return _tunnels[tname];
@@ -209,14 +215,14 @@ Map {
         hash = msg['from'];
         t = _getTunnelByLocalServiceName(msg['data']['name']);
         if (!t || _connSet[hash]) {
-            _mln_msg_queue_send(hash, _mln_json_encode([
+            _mq.send(hash, _json.encode([
                 'type': 'localConnection',
                 'op': 'close',
             ]));
             return;
         } fi
         _connSet[hash] = true;
-        _mln_msg_queue_send(t['hash'], _mln_json_encode([
+        _mq.send(t['hash'], _json.encode([
             'type': 'connection',
             'op': 'new',
             'from': hash,
@@ -229,7 +235,7 @@ Map {
         _connSet[hash] = nil;
         t = _getTunnelByLocalServiceName(msg['data']['name']);
         if (t) {
-            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+            _mq.send(t['hash'], _json.encode([
                 'type': 'connection',
                 'op': 'close',
                 'from': hash,
@@ -240,7 +246,7 @@ Map {
                 ],
             ]));
         } fi
-        _mln_msg_queue_send(hash, _mln_json_encode([
+        _mq.send(hash, _json.encode([
             'type': 'localConnection',
             'op': op,
             'from': nil,
@@ -250,7 +256,7 @@ Map {
         hash = msg['to'];
         if (_connSet[hash]) {
             _connSet[hash] = nil;
-            _mln_msg_queue_send(hash, _mln_json_encode([
+            _mq.send(hash, _json.encode([
                 'type': 'localConnection',
                 'op': 'close',
                 'from': msg['from'],
@@ -268,7 +274,7 @@ Map {
         type = 'remoteConnection';
     if (_connSet[hash]) {
         _connSet[hash] = nil;
-        _mln_msg_queue_send(hash, _mln_json_encode([
+        _mq.send(hash, _json.encode([
             'type': type,
             'op': 'close',
         ]));
@@ -276,11 +282,11 @@ Map {
 }
 
 @getTunnelByRemoteServiceName(serviceName) {
-    if (!(_mln_has(_remoteMap.serviceMap, serviceName))) {
+    if (!(_sys.has(_remoteMap.serviceMap, serviceName))) {
         return nil;
     } fi
     tname = _remoteMap.serviceMap[serviceName];
-    if (!(_mln_has(_tunnels, tname)) || !(_tunnels[tname])) {
+    if (!(_sys.has(_tunnels, tname)) || !(_tunnels[tname])) {
         return nil;
     } fi
     return _tunnels[tname];
@@ -297,7 +303,7 @@ Map {
                 type = 'remoteConnection';
             else
                 type = 'localConnection';
-            _mln_msg_queue_send(hash, _mln_json_encode([
+            _mq.send(hash, _json.encode([
                 'type': type,
                 'op': 'close',
                 'from': msg['from'],
@@ -307,7 +313,7 @@ Map {
     } else if (op == 'success') {
         hash = msg['to'];
         if (_connSet[hash]) {
-            _mln_msg_queue_send(hash, _mln_json_encode([
+            _mq.send(hash, _json.encode([
                 'type': 'localConnection',
                 'op': 'open',
                 'from': msg['from'],
@@ -316,7 +322,7 @@ Map {
         } else {
             t = _getTunnelByLocalServiceName(s);
             if (t) {
-                _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                _mq.send(t['hash'], _json.encode([
                     'type': 'connection',
                     'op': 'fail',
                     'from': nil,
@@ -329,10 +335,10 @@ Map {
             } fi
         }
     } else if (op == 'new') {
-        if (!(_mln_has(_remoteServices, s)) || !(_remoteServices[s])) {
+        if (!(_sys.has(_remoteServices, s)) || !(_remoteServices[s])) {
             t = _getTunnelByRemoteServiceName(s);
             if (t) {
-                _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                _mq.send(t['hash'], _json.encode([
                     'type': 'connection',
                     'op': 'fail',
                     'from': msg['to'],
@@ -343,7 +349,7 @@ Map {
                 ]));
             } fi
         } else {
-            _mln_eval('remoteService.m', _mln_json_encode([
+            _eval('remoteService.m', _json.encode([
                 'name': s,
                 'key': _remoteServices[s]['key'],
                 'timeout': _remoteServices[s]['timeout'],
@@ -359,7 +365,7 @@ Map {
                 type = 'remoteConnection';
             else
                 type = 'localConnection';
-            _mln_msg_queue_send(hash, _mln_json_encode([
+            _mq.send(hash, _json.encode([
                 'type': type,
                 'op': 'close',
                 'from': msg['from'],
@@ -375,7 +381,7 @@ Map {
     if (msg['op'] == 'success') {
         if (t) {
             _connSet[msg['from']] = true;
-            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+            _mq.send(t['hash'], _json.encode([
                 'type': 'connection',
                 'op': 'success',
                 'from': msg['from'],
@@ -384,12 +390,12 @@ Map {
                     'name': s,
                 ],
             ]));
-            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+            _mq.send(msg['from'], _json.encode([
                 'type': 'remoteConnection',
                 'op': 'success',
             ]));
         } else {
-            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+            _mq.send(msg['from'], _json.encode([
                 'type': 'remoteConnection',
                 'op': 'close',
                 'data': [
@@ -399,7 +405,7 @@ Map {
         }
     } else if (msg['op'] == 'fail') {
         if (t) {
-            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+            _mq.send(t['hash'], _json.encode([
                 'type': 'connection',
                 'op': 'fail',
                 'from': msg['from'],
@@ -413,7 +419,7 @@ Map {
         hash = msg['from'];
         _connSet[hash] = nil;
         if (t) {
-            _mln_msg_queue_send(t['hash'], _mln_json_encode([
+            _mq.send(t['hash'], _json.encode([
                 'type': 'connection',
                 'op': 'close',
                 'from': hash,
@@ -423,7 +429,7 @@ Map {
                 ],
             ]));
         } fi
-        _mln_msg_queue_send(hash, _mln_json_encode([
+        _mq.send(hash, _json.encode([
             'type': 'remoteConnection',
             'op': op,
             'from': nil,
@@ -442,21 +448,21 @@ Map {
             type = 'remoteConnection';
         }
         if (!t) {
-            _mln_msg_queue_send(msg['from'], _mln_json_encode([
+            _mq.send(msg['from'], _json.encode([
                 'type': type,
                 'op': 'close',
             ]));
             return;
         } fi
-        _mln_msg_queue_send(t['hash'], _mln_json_encode(msg));
+        _mq.send(t['hash'], _json.encode(msg));
     } else {
         hash = msg['to'];
-        if (_mln_has(_connSet, hash) && _connSet[hash]) {
-            _mln_msg_queue_send(hash, _mln_json_encode(msg));
+        if (_sys.has(_connSet, hash) && _connSet[hash]) {
+            _mq.send(hash, _json.encode(msg));
         } else {
             t = _getTunnelByRemoteServiceName(msg['data']['name']);
             if (t) {
-                _mln_msg_queue_send(t['hash'], _mln_json_encode([
+                _mq.send(t['hash'], _json.encode([
                     'type': 'connection',
                     'op': 'close',
                     'from': hash,
@@ -480,9 +486,9 @@ remoteMap.init();
 connSet = [];
 
 while (true) {
-    msg = mln_msg_queue_recv('manager', 10000);
+    msg = mq.recv('manager', 10000);
     if (msg) {
-        msg = mln_json_decode(msg);
+        msg = json.decode(msg);
         type = msg['type'];
         switch (type) {
             case 'tunnel':
@@ -529,22 +535,22 @@ while (true) {
         }
     } fi
 
-    localServices = mln_diff(localServices, [nil]);
-    remoteServices = mln_diff(remoteServices, [nil]);
-    tunnels = mln_diff(tunnels, [nil]);
-    connSet = mln_diff(connSet, [nil]);
+    localServices = sys.diff(localServices, [nil]);
+    remoteServices = sys.diff(remoteServices, [nil]);
+    tunnels = sys.diff(tunnels, [nil]);
+    connSet = sys.diff(connSet, [nil]);
 
-    n = mln_size(localServices);
+    n = sys.size(localServices);
     for (i = 0; i < n; ++i) {
         s = localServices[i];
-        if (!(mln_has(localMap.serviceMap, s['name'])) || !(mln_has(tunnels, localMap.serviceMap[s['name']])))
+        if (!(sys.has(localMap.serviceMap, s['name'])) || !(sys.has(tunnels, localMap.serviceMap[s['name']])))
             continue;
         fi
-        connfd = mln_tcp_accept(s['fd'], 10);
-        if (mln_is_bool(connfd) || mln_is_nil(connfd))
+        connfd = net.tcp_accept(s['fd'], 10);
+        if (sys.is_bool(connfd) || sys.is_nil(connfd))
             continue;
         fi
-        mln_eval('localService.m', mln_json_encode([
+        eval('localService.m', json.encode([
             'name': localServices[i]['name'],
             'fd': connfd,
             'key': localServices[i]['key'],

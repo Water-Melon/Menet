@@ -1,3 +1,7 @@
+sys = import('sys');
+str = import('str');
+mq = import('mq');
+
 Http {
     method;
     uri;
@@ -12,7 +16,7 @@ Http {
     }
     @response() {
         ret = '' + this.version + ' ' + this.code + ' ' + this.msg + "\r\n";
-        n = _mln_size(this.headers);
+        n = _sys.size(this.headers);
         for (i = 0; i < n; ++i) {
             ret += (this.headers[i] + "\r\n");
         }
@@ -25,12 +29,12 @@ Http {
 }
 
 @httpParseMeta(&meta) {
-    parts = _mln_slice(meta, " \t");
-    if (_mln_size(parts) != 3)
+    parts = _str.slice(meta, " \t");
+    if (_sys.size(parts) != 3)
         return false;
     fi
 
-    resource = _mln_slice(parts[1], '?');
+    resource = _str.slice(parts[1], '?');
 
     return [
         'method': parts[0],
@@ -41,8 +45,8 @@ Http {
 }
 
 @httpParse(&buf) {
-    parts = _mln_slice(buf, "\r\n");
-    n = _mln_size(parts);
+    parts = _str.slice(buf, "\r\n");
+    n = _sys.size(parts);
     if (n < 2)
         return nil;
     fi
@@ -60,8 +64,8 @@ Http {
     h.version = ret['version'];
 
     for (i = 1; i < n - 1; ++i) {
-        kv = _mln_slice(parts[i], ':');
-        if (_mln_size(kv) < 2)
+        kv = _str.slice(parts[i], ':');
+        if (_sys.size(kv) < 2)
             if (i + 1 < n - 1)
                 return false;
             else
@@ -69,18 +73,18 @@ Http {
         fi
         h.headers[kv[0]] = parts[i];
         if (kv[0] == 'Content-Length') {
-            bodyLen = _mln_int(kv[1]);
+            bodyLen = _sys.int(kv[1]);
         } fi
     }
     if (bodyLen) {
-        if (_mln_strlen(parts[n-1]) != bodyLen) {
+        if (_str.strlen(parts[n-1]) != bodyLen) {
             return nil;
         } else {
             h.body = parts[n-1];
         }
     } else {
-        kv = _mln_slice(parts[n-1], ':');
-        if (_mln_size(kv) < 2)
+        kv = _str.slice(parts[n-1], ':');
+        if (_str.size(kv) < 2)
             return nil;
         fi
         h.headers[kv[0]] = parts[n-1];
@@ -104,9 +108,9 @@ Http {
     h.headers = [
         'Server: Menet',
     ];
-    json = _mln_json_decode(json);
+    json = _json.decode(json);
 
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': 'tunnel',
         'op': op,
         'from': conf['hash'],
@@ -116,8 +120,8 @@ Http {
         ],
     ]));
 
-    resp = _mln_msg_queue_recv(conf['hash']);
-    resp = _mln_json_decode(resp);
+    resp = _mq.recv(conf['hash']);
+    resp = _json.decode(resp);
     h.code = resp['code'];
     h.msg = resp['msg'];
     return h;
@@ -138,7 +142,7 @@ Http {
     h.headers = [
         'Server: Menet',
     ];
-    json = _mln_json_decode(json);
+    json = _json.decode(json);
 
     if (json['type'] == 'local') {
         type = 'localService';
@@ -149,7 +153,7 @@ Http {
         h.msg = 'Bad Request';
         return h;
     }
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': type,
         'op': op,
         'from': conf['hash'],
@@ -161,8 +165,8 @@ Http {
         ],
     ]));
 
-    resp = _mln_msg_queue_recv(conf['hash']);
-    resp = _mln_json_decode(resp);
+    resp = _mq.recv(conf['hash']);
+    resp = _json.decode(resp);
     h.code = resp['code'];
     h.msg = resp['msg'];
     return h;
@@ -181,7 +185,7 @@ Http {
     h.headers = [
         'Server: Menet',
     ];
-    json = _mln_json_decode(json);
+    json = _json.decode(json);
 
     if (json['type'] == 'local') {
         type = 'bindLocal';
@@ -192,7 +196,7 @@ Http {
         h.msg = 'Bad Request';
         return h;
     }
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': type,
         'op': op,
         'from': conf['hash'],
@@ -202,8 +206,8 @@ Http {
         ],
     ]));
 
-    resp = _mln_msg_queue_recv(conf['hash']);
-    resp = _mln_json_decode(resp);
+    resp = _mq.recv(conf['hash']);
+    resp = _json.decode(resp);
     h.code = resp['code'];
     h.msg = resp['msg'];
     return h;
@@ -215,17 +219,17 @@ Http {
     h.headers = [
         'Server: Menet',
     ];
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': 'config',
         'op': op,
         'from': conf['hash'],
     ]));
-    resp = _mln_msg_queue_recv(conf['hash']);
-    resp = _mln_json_decode(resp);
+    resp = _mq.recv(conf['hash']);
+    resp = _json.decode(resp);
     h.code = resp['code'];
     h.msg = resp['msg'];
-    h.body = _mln_json_encode(resp['data']);
-    h.headers['Content-Length'] = _mln_strlen(h.body);
+    h.body = _json.encode(resp['data']);
+    h.headers['Content-Length'] = _str.strlen(h.body);
     h.headers['Content-Type'] = 'application/json';
     return h;
 }
@@ -245,7 +249,7 @@ Http {
         h.headers = [
             'Server: Menet',
         ];
-        _mln_tcp_send(conf['fd'], h.response());
+        _net.tcp_send(conf['fd'], h.response());
         return;
     }
 
@@ -272,27 +276,27 @@ Http {
             ];
             break;
     }
-    _mln_tcp_send(conf['fd'], h.response());
+    _net.tcp_send(conf['fd'], h.response());
 }
 
-self = mln_json_decode(EVAL_DATA);
+self = json.decode(EVAL_DATA);
 buf = '';
 while (true) {
-    ret = mln_tcp_recv(self['fd'], 3000);
-    if (!ret || (mln_is_bool(ret) && ret)) {
-        mln_tcp_close(self['fd']);
+    ret = net.tcp_recv(self['fd'], 3000);
+    if (!ret || (sys.is_bool(ret) && ret)) {
+        net.tcp_close(self['fd']);
         break;
     } fi
     buf += ret;
     ret = httpParse(buf);
-    if (mln_is_nil(ret)) {
+    if (sys.is_nil(ret)) {
         continue;
     } else if (ret) {
         if (ret.uri != '/config' && !(ret.body))
             ret.uri = 'error';
         fi
         requestProcess(ret, self);
-        mln_tcp_close(self['fd']);
+        net.tcp_close(self['fd']);
         break;
     } fi
 }

@@ -1,12 +1,17 @@
-conf = mln_json_decode(EVAL_DATA);
-mln_print('tunnel listen:' + conf['ip'] + ':' + conf['port']);
-fd = mln_tcp_listen(conf['ip'], conf['port']);
+json = import('json');
+sys = import('sys');
+md5 = import('md5');
+net = import('net');
+
+conf = json.decode(EVAL_DATA);
+sys.print('tunnel listen:' + conf['ip'] + ':' + conf['port']);
+fd = net.tcp_listen(conf['ip'], conf['port']);
 while (true) {
-    connfd = mln_tcp_accept(fd);
+    connfd = net.tcp_accept(fd);
     tcp = [
-        'hash': mln_md5('' + connfd + mln_time()),
+        'hash': md5.md5('' + connfd + sys.time()),
         'fd': connfd
     ];
-    mln_eval('tunnels.m', mln_json_encode(tcp));
+    eval('tunnels.m', json.encode(tcp));
 }
 

@@ -1,21 +1,26 @@
 #include "common.m"
 
-conf = mln_json_decode(EVAL_DATA);
+json = import('json');
+mq = import('mq');
+net = import('net');
+mq = import('mq');
+
+conf = json.decode(EVAL_DATA);
 
 @badRequest(from) {
-    _mln_msg_queue_send(from, _mln_json_encode([
+    _mq.send(from, _json.encode([
         'code': 400,
         'msg': 'Bad Request'
     ]));
 }
-fd = mln_tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
-if (mln_is_bool(fd) || mln_is_nil(fd)) {
+fd = net.tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
+if (sys.is_bool(fd) || sys.is_nil(fd)) {
     badRequest(conf['from']);
     return;
 } fi
 hash = conf['hash'];
 
-ret = mln_tcp_send(fd, frameGenerate(mln_json_encode([
+ret = net.tcp_send(fd, frameGenerate(json.encode([
     'type': 'sync',
     'from': nil,
     'to': nil,
@@ -23,24 +28,24 @@ ret = mln_tcp_send(fd, frameGenerate(mln_json_encode([
 ])));
 if (!ret) {
     badRequest(conf['from']);
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
 
-rbuf = mln_tcp_recv(fd, 3000);
-if (mln_is_bool(rbuf) || mln_is_nil(rbuf)) {
+rbuf = net.tcp_recv(fd, 3000);
+if (sys.is_bool(rbuf) || sys.is_nil(rbuf)) {
     badRequest(conf['from']);
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
 ret = frameParse(rbuf);
 if (!ret) {
     badRequest(conf['from']);
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
 
-mln_msg_queue_send('manager', mln_json_encode([
+mq.send('manager', json.encode([
     'type': 'tunnelConnected',
     'op': nil,
     'from': hash,
@@ -50,11 +55,11 @@ mln_msg_queue_send('manager', mln_json_encode([
     ],
 ]));
 
-ret = mln_msg_queue_recv(hash);
-mln_msg_queue_send(conf['from'], ret);
-ret = mln_json_decode(ret);
+ret = mq.recv(hash);
+mq.send(conf['from'], ret);
+ret = json.decode(ret);
 if (ret['code'] != 200) {
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
 

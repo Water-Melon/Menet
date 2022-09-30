@@ -1,9 +1,16 @@
 #include "frame.m"
 
+mq = import('mq');
+json = import('json');
+net = import('net');
+sys = import('sys');
+rc = import('rc');
+b = import('base64');
+
 @cleanMsg(hash) {
     cnt = 0;
     while (cnt < 30) {
-        ret = _mln_msg_queue_recv(hash, 100000);
+        ret = _mq.recv(hash, 100000);
         if (!ret)
             ++cnt;
         else
@@ -14,21 +21,21 @@
 @cleanTunnelMsg(hash) {
     cnt = 0;
     while (cnt < 30) {
-        ret = _mln_msg_queue_recv(hash, 100000);
+        ret = _mq.recv(hash, 100000);
         if (!ret) {
             ++cnt;
         } else {
             cnt = 0;
-            ret = _mln_json_decode(ret);
+            ret = _json.decode(ret);
             if (ret['type'] == 'connection' && ret['op'] == 'new') {
-                _mln_msg_queue_send('manager', _mln_json_encode([
+                _mq.send('manager', _json.encode([
                     'type': 'localConnection',
                     'op': 'openAckFail',
                     'from': nil,
                     'to': ret['from'],
                 ]));
             } else if (ret['type'] == 'serviceIO') {
-                _mln_msg_queue_send('manager', _mln_json_encode([
+                _mq.send('manager', _json.encode([
                     'type': 'serviceClose',
                     'op': 'immediate',
                     'from': msg['from'],
@@ -45,7 +52,7 @@
 
 @closeServiceConnection(fd, hash, name, type, peer) {
     if (type == 'local') {
-        _mln_msg_queue_send('manager', _mln_json_encode([
+        _mq.send('manager', _json.encode([
             'type': 'localConnection',
             'op': 'close',
             'from': hash,
@@ -55,7 +62,7 @@
             ],
         ]));
     } else {
-        _mln_msg_queue_send('manager', _mln_json_encode([
+        _mq.send('manager', _json.encode([
             'type': 'remoteConnection',
             'op': 'close',
             'from': hash,
@@ -67,11 +74,11 @@
     }
 
     _cleanMsg(hash);
-    _mln_tcp_close(fd);
+    _net.tcp_close(fd);
 }
 
 @closeTunnelConnection(fd, hash, name) {
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': 'tunnelDisconnected',
         'op': nil,
         'from': hash,
@@ -81,13 +88,13 @@
     ]));
 
     _cleanTunnelMsg(hash);
-    _mln_tcp_close(fd);
+    _net.tcp_close(fd);
 }
 
 @tunnelMsgConnectionHandle(fd, hash, msg) {
     op = msg['op'];
     if (op == 'new') {
-        ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
+        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -97,7 +104,7 @@
             ],
         ])));
         if (!ret) {
-            _mln_msg_queue_send('manager', _mln_json_encode([
+            _mq.send('manager', _json.encode([
                 'type': 'localConnection',
                 'op': 'openAckFail',
                 'from': nil,
@@ -106,7 +113,7 @@
             return false;
         } fi
     } else if (op == 'close') {
-        ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
+        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -120,7 +127,7 @@
             return false;
         fi
     } else if (op == 'fail') {
-        ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
+        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -133,7 +140,7 @@
             return false;
         fi
     } else { /* op =='success' */
-        ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode([
+        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -150,9 +157,9 @@
 }
 
 @tunnelMsgDisconnectHandle(fd, from, hash) {
-    _mln_tcp_close(fd);
+    _net.tcp_close(fd);
     if (from) {
-        _mln_msg_queue_send(from, _mln_json_encode([
+        _mq.send(from, _json.encode([
             'code': 200,
             'msg': "OK",
         ]));
@@ -161,7 +168,7 @@
 }
 
 @tunnelNetConnectionHandle(&msg) {
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': 'connectionNotice',
         'op': msg['op'],
         'from': msg['from'],
@@ -174,14 +181,14 @@
 }
 
 @tunnelMsgDataHandle(fd, &msg) {
-    ret = _mln_tcp_send(fd, _frameGenerate(_mln_json_encode(msg)));
+    ret = _net.tcp_send(fd, _frameGenerate(_json.encode(msg)));
     if (!ret) {
         if (msg['data']['type'] == 'local') {
             type = 'localConnection';
         } else {
             type = 'remoteConnection';
         }
-        _mln_msg_queue_send('manager', _mln_json_encode([
+        _mq.send('manager', _json.encode([
             'type': type,
             'op': 'close',
             'from': msg['from'],
@@ -196,14 +203,14 @@
 
 @tunnelNetServiceIOHandle(frame) {
     frame['op'] = 'output';
-    _mln_msg_queue_send('manager', _mln_json_encode(frame));
+    _mq.send('manager', _json.encode(frame));
 }
 
 @tunnelLoop(fd, hash, name, &rbuf) {
     while (true) {
-        msg = _mln_msg_queue_recv(hash, 10000);
+        msg = _mq.recv(hash, 10000);
         if (msg) {
-            msg = _mln_json_decode(msg);
+            msg = _json.decode(msg);
             switch(msg['type']) {
                 case 'disconnect':
                     _tunnelMsgDisconnectHandle(fd, msg['from'], hash);
@@ -227,19 +234,19 @@
             }
         } fi
     
-        ret = _mln_tcp_recv(fd, 10);
-        if (_mln_is_bool(ret)) {
+        ret = _net.tcp_recv(fd, 10);
+        if (_sys.is_bool(ret)) {
             _closeTunnelConnection(fd, hash, name);
             return;
         } else {
-            if (!(_mln_is_nil(ret)))
+            if (!(_sys.is_nil(ret)))
                 rbuf += ret;
             fi
             if (rbuf) {
                 ret = true;
                 frame = _frameParse(rbuf);
                 if (frame) {
-                    frame = _mln_json_decode(frame);
+                    frame = _json.decode(frame);
                     type = frame['type'];
                     switch(type) {
                         case 'connection':
@@ -262,7 +269,7 @@
 }
 
 @serviceMsgProcess(fd, hash, name, &msg, type, peer, key) {
-    msg = _mln_json_decode(msg);
+    msg = _json.decode(msg);
     t = msg['type'];
     switch (t) {
         case 'remoteConnection':
@@ -276,8 +283,8 @@
             } fi
             break;
         case 'serviceIO':
-            data = _mln_rc4(_mln_base64(msg['data']['data'], 'decode'), key);
-            if (!(_mln_tcp_send(fd, data)))
+            data = _rc.rc4(_b.base64(msg['data']['data'], 'decode'), key);
+            if (!(_net.tcp_send(fd, data)))
                 return false;
             fi
             break;
@@ -288,7 +295,7 @@
 }
 
 @serviceDataProcess(fd, hash, name, peer, key, type, &data) {
-    _mln_msg_queue_send('manager', _mln_json_encode([
+    _mq.send('manager', _json.encode([
         'type': 'serviceIO',
         'op': 'input',
         'from': hash,
@@ -296,7 +303,7 @@
         'data': [
             'name': name,
             'type': type,
-            'data': _mln_base64(_mln_rc4(data, key), 'encode'),
+            'data': _b.base64(_rc.rc4(data, key), 'encode'),
         ],
     ]));
     return true;

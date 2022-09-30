@@ -1,32 +1,36 @@
 #include "common.m"
 
-conf = mln_json_decode(EVAL_DATA);
+json = import('json');
+net = import('net');
+mq = import('mq');
+
+conf = json.decode(EVAL_DATA);
 fd = conf['fd'];
 hash = conf['hash'];
 
-rbuf = mln_tcp_recv(fd, 3000);
-if (mln_is_bool(rbuf) || mln_is_nil(rbuf)) {
-    mln_tcp_close(fd);
+rbuf = net.tcp_recv(fd, 3000);
+if (sys.is_bool(rbuf) || sys.is_nil(rbuf)) {
+    net.tcp_close(fd);
     return;
 } fi
 ret = frameParse(rbuf);
 if (!ret) {
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
-ret = mln_json_decode(ret);
+ret = json.decode(ret);
 name = ret['data'];
 
-ret = mln_tcp_send(fd, frameGenerate(mln_json_encode([
+ret = net.tcp_send(fd, frameGenerate(json.encode([
     'code': 200,
     'msg': 'OK',
 ])));
 if (!ret) {
-    mln_tcp_close(fd);
+    net.tcp_close(fd);
     return;
 } fi
 
-mln_msg_queue_send('manager', mln_json_encode([
+mq.send('manager', json.encode([
     'type': 'tunnel',
     'op': 'update',
     'from': conf['hash'],

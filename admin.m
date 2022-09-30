@@ -1,11 +1,16 @@
-conf = mln_json_decode(EVAL_DATA);
-mln_print('admin listen:' + conf['ip'] + ':' + conf['port']);
-fd = mln_tcp_listen(conf['ip'], conf['port']);
+json = import('json');
+sys = import('sys');
+net = import('net');
+md5 = import('md5');
+
+conf = json.decode(EVAL_DATA);
+sys.print('admin listen:' + conf['ip'] + ':' + conf['port']);
+fd = net.tcp_listen(conf['ip'], conf['port']);
 while (true) {
-    connfd = mln_tcp_accept(fd);
+    connfd = net.tcp_accept(fd);
     tcp = [
-        'hash': mln_md5(EVAL_DATA + connfd + mln_time()),
+        'hash': md5.md5(EVAL_DATA + connfd + sys.time()),
         'fd': connfd
     ];
-    mln_eval('http.m', mln_json_encode(tcp));
+    eval('http.m', json.encode(tcp));
 }
