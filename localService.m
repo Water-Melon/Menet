@@ -1,9 +1,9 @@
 #include "common.m"
-json = import('json');
-md5 = import('md5');
-sys = import('sys');
-net = import('net');
-mq = import('mq');
+json = Import('json');
+md5 = Import('md5');
+sys = Import('sys');
+net = Import('net');
+mq = Import('mq');
 
 conf = json.decode(EVAL_DATA);
 name = conf['name'];
@@ -32,7 +32,7 @@ if (!ret) {
             'name': name,
         ],
     ]));
-    _cleanMsg(hash);
+    CleanMsg(hash);
     return;
 } fi
 ret = json.decode(ret);
@@ -48,20 +48,20 @@ step = 10;
 while (true) {
     ret = mq.recv(hash, 10000);
     if (ret) {
-        if (!(serviceMsgProcess(fd, hash, name, ret, 'local', peer, key))) {
-            closeServiceConnection(fd, hash, name, 'local', peer);
+        if (!(ServiceMsgProcess(fd, hash, name, ret, 'local', peer, key))) {
+            CloseServiceConnection(fd, hash, name, 'local', peer);
             return;
         } fi
     } fi
 
     ret = net.tcp_recv(fd, step);
     if ((sys.is_int(timeout) && (cnt >= timeout)) || sys.is_bool(ret)) {
-        closeServiceConnection(fd, hash, name, 'local', peer);
+        CloseServiceConnection(fd, hash, name, 'local', peer);
         return;
     } else if (!(sys.is_nil(ret))) {
         cnt = 0;
-        if (!(serviceDataProcess(fd, hash, name, peer, key, 'local', ret))) {
-            closeServiceConnection(fd, hash, name, 'local', peer);
+        if (!(ServiceDataProcess(fd, hash, name, peer, key, 'local', ret))) {
+            CloseServiceConnection(fd, hash, name, 'local', peer);
             return;
         } fi
     } else {

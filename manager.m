@@ -1,8 +1,8 @@
-sys = import('sys');
-mq = import('mq');
-json = import('json');
-md5 = import('md5');
-net = import('net');
+Sys = Import('sys');
+Mq = Import('mq');
+Json = Import('json');
+Md5 = Import('md5');
+Net = Import('net');
 
 Map {
     tunnelMap;
@@ -13,64 +13,64 @@ Map {
     }
 }
 
-@tunnelHandle(&msg) {
+@TunnelHandle(&msg) {
     name = msg['data']['name'];
     notExist = true;
-    if (_sys.has(_tunnels, name) && _tunnels[name]) {
+    if (Sys.has(Tunnels, name) && Tunnels[name]) {
         notExist = false;
         if (msg['op'] == 'remove')
             from = msg['from'];
         fi
-        _mq.send(_tunnels[name]['hash'], _json.encode([
+        Mq.send(Tunnels[name]['hash'], Json.encode([
             'type': 'disconnect',
             'op': nil,
             'from': from,
         ]));
-        _tunnels[name] = nil;
+        Tunnels[name] = nil;
     } fi
     if (msg['op'] == 'update') {
         if (msg['data']['dest']) {
-            hash = _md5.md5(name + _sys.time());
-            _eval('tunnelc.m', _json.encode([
+            hash = Md5.md5(name + Sys.time());
+            Eval('tunnelc.m', Json.encode([
                 'from': msg['from'],
                 'dest': msg['data']['dest'],
                 'name': msg['data']['name'],
                 'hash': hash,
             ]));
         } else {
-            _tunnels[msg['data']['name']] = [
+            Tunnels[msg['data']['name']] = [
                 'hash': msg['from'],
                 'dest': msg['data']['dest'],
             ];
-            _mq.send(msg['from'], _json.encode([
+            Mq.send(msg['from'], Json.encode([
                 'code': 200,
                 'msg': 'OK',
             ]));
         }
     } else if (notExist) {
-        _mq.send(msg['from'], _json.encode([
+        Mq.send(msg['from'], Json.encode([
             'code': 200,
             'msg': 'OK',
         ]));
     } fi
 }
 
-@localServiceHandle(&msg) {
+@LocalServiceHandle(&msg) {
     name = msg['data']['name'];
-    if (_sys.has(_localServices, name) && _localServices[name]) {
-        _net.tcp_close(_localServices[name]['fd']);
-        _localServices[name] = nil;
+    if (Sys.has(LocalServices, name) && LocalServices[name]) {
+        Net.tcp_close(LocalServices[name]['fd']);
+        LocalServices[name] = nil;
     } fi
     if (msg['op'] == 'update') {
-        fd = _net.tcp_listen(msg['data']['addr'][0], msg['data']['addr'][1]);
-        if (!fd && _sys.is_bool(fd)) {
-            _mq.send(msg['from'], _json.encode([
+        fd = Net.tcp_listen(msg['data']['addr'][0], msg['data']['addr'][1]);
+        if (!fd && Sys.is_bool(fd)) {
+            Mq.send(msg['from'], Json.encode([
                 'code': 500,
                 'msg': 'Internal Server Error',
             ]));
             return;
         } fi
-        _localServices[name] = [
+        LocalServices[name] = [
             'name': name,
             'addr': msg['data']['addr'],
             'fd': fd,
@@ -78,151 +78,151 @@ Map {
             'timeout': msg['data']['timeout'],
         ];
     } fi
-    _mq.send(msg['from'], _json.encode([
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
-@remoteServiceHandle(&msg) {
+@RemoteServiceHandle(&msg) {
     name = msg['data']['name'];
-    if (_sys.has(_remoteServices, name))
-        _remoteServices[name] = nil;
+    if (Sys.has(RemoteServices, name))
+        RemoteServices[name] = nil;
     fi
     if (msg['op'] == 'update') {
-        _remoteServices[name] = [
+        RemoteServices[name] = [
             'name': name,
             'addr': msg['data']['addr'],
             'key': msg['data']['key'],
             'timeout': msg['data']['timeout'],
         ];
     } fi
-    _mq.send(msg['from'], _json.encode([
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
-@bindLocalHandle(&msg) {
+@BindLocalHandle(&msg) {
     t = msg['data']['tunnel'];
     s = msg['data']['service'];
-    if (_sys.has(_localMap.serviceMap, s)) {
-        _localMap.serviceMap = _sys.key_diff(_localMap.serviceMap, [s:nil]);
-        _localMap.tunnelMap[t] = _sys.diff(_localMap.tunnelMap[t], [s]);
+    if (Sys.has(LocalMap.serviceMap, s)) {
+        LocalMap.serviceMap = Sys.key_diff(LocalMap.serviceMap, [s:nil]);
+        LocalMap.tunnelMap[t] = Sys.diff(LocalMap.tunnelMap[t], [s]);
     } fi
     if (msg['op'] == 'update') {
-        _localMap.serviceMap[s] = t;
-        if (!(_localMap.tunnelMap[t])) {
-            _localMap.tunnelMap[t] = [];
+        LocalMap.serviceMap[s] = t;
+        if (!(LocalMap.tunnelMap[t])) {
+            LocalMap.tunnelMap[t] = [];
         } fi
-        _localMap.tunnelMap[t][] = s;
+        LocalMap.tunnelMap[t][] = s;
     } fi
-    _mq.send(msg['from'], _json.encode([
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
-@bindRemoteHandle(&msg) {
+@BindRemoteHandle(&msg) {
     t = msg['data']['tunnel'];
     s = msg['data']['service'];
-    if (_sys.has(_remoteMap.serviceMap, s)) {
-        _remoteMap.serviceMap = _sys.key_diff(_remoteMap.serviceMap, [s:nil]);
-        _remoteMap.tunnelMap[t] = _sys.diff(_remoteMap.tunnelMap[t], [s]);
+    if (Sys.has(RemoteMap.serviceMap, s)) {
+        RemoteMap.serviceMap = Sys.key_diff(RemoteMap.serviceMap, [s:nil]);
+        RemoteMap.tunnelMap[t] = Sys.diff(RemoteMap.tunnelMap[t], [s]);
     } fi
     if (msg['op'] == 'update') {
-        _remoteMap.serviceMap[s] = t;
-        if (!(_remoteMap.tunnelMap[t])) {
-            _remoteMap.tunnelMap[t] = [];
+        RemoteMap.serviceMap[s] = t;
+        if (!(RemoteMap.tunnelMap[t])) {
+            RemoteMap.tunnelMap[t] = [];
         } fi
-        _remoteMap.tunnelMap[t][] = s;
+        RemoteMap.tunnelMap[t][] = s;
     } fi
-    _mq.send(msg['from'], _json.encode([
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
-@configHandle(&msg) {
-    _mq.send(msg['from'], _json.encode([
+@ConfigHandle(&msg) {
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
         'data': [
-            'tunnels': _tunnels,
+            'tunnels': Tunnels,
             'services': [
-                'local': _localServices,
-                'remote': _remoteServices,
+                'local': LocalServices,
+                'remote': RemoteServices,
             ],
             'bind': [
-                'local': _localMap.serviceMap,
-                'remote': _remoteMap.serviceMap,
+                'local': LocalMap.serviceMap,
+                'remote': RemoteMap.serviceMap,
             ],
-            'connections': _connSet,
+            'connections': ConnSet,
         ],
     ]));
 }
 
-@tunnelConnectedHandle(&msg) {
+@TunnelConnectedHandle(&msg) {
     name = msg['data']['name'];
-    if (_sys.has(_tunnels, name) && _tunnels[name]) {
-        _mq.send(_tunnels[name]['hash'], _json.encode([
+    if (Sys.has(Tunnels, name) && Tunnels[name]) {
+        Mq.send(Tunnels[name]['hash'], Json.encode([
             'type': 'disconnect',
             'op': nil,
             'from': nil,
         ]));
-        _tunnels[name] = nil;
-        _mq.send(msg['from'], _json.encode([
+        Tunnels[name] = nil;
+        Mq.send(msg['from'], Json.encode([
             'code': 400,
             'msg': 'Bad Request',
         ]));
         return;
     } fi
-    _tunnels[name] = [
+    Tunnels[name] = [
         'hash': msg['from'],
         'dest': msg['data']['dest'],
     ];
-    _mq.send(msg['from'], _json.encode([
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
-@tunnelDisconnectedHandle(&msg) {
+@TunnelDisconnectedHandle(&msg) {
     name = msg['data']['name'];
-    if (_sys.has(_tunnels, name) && _tunnels[name]) {
-        _tunnels[name] = nil;
+    if (Sys.has(Tunnels, name) && Tunnels[name]) {
+        Tunnels[name] = nil;
     } fi
-    _mq.send(msg['from'], _json.encode([
+    Mq.send(msg['from'], Json.encode([
         'code': 200,
         'msg': 'OK',
     ]));
 }
 
-@getTunnelByLocalServiceName(serviceName) {
-    if (!(_sys.has(_localMap.serviceMap, serviceName)))
+@GetTunnelByLocalServiceName(serviceName) {
+    if (!(Sys.has(LocalMap.serviceMap, serviceName)))
         return nil;
     fi
-    tname = _localMap.serviceMap[serviceName];
-    if (!(_sys.has(_tunnels, tname)) || !(_tunnels[tname]))
+    tname = LocalMap.serviceMap[serviceName];
+    if (!(Sys.has(Tunnels, tname)) || !(Tunnels[tname]))
         return nil;
     fi
-    return _tunnels[tname];
+    return Tunnels[tname];
 }
 
-@localConnectionHandle(&msg) {
+@LocalConnectionHandle(&msg) {
     op = msg['op'];
     if (op == 'open') {
         hash = msg['from'];
-        t = _getTunnelByLocalServiceName(msg['data']['name']);
-        if (!t || _connSet[hash]) {
-            _mq.send(hash, _json.encode([
+        t = GetTunnelByLocalServiceName(msg['data']['name']);
+        if (!t || ConnSet[hash]) {
+            Mq.send(hash, Json.encode([
                 'type': 'localConnection',
                 'op': 'close',
             ]));
             return;
         } fi
-        _connSet[hash] = true;
-        _mq.send(t['hash'], _json.encode([
+        ConnSet[hash] = true;
+        Mq.send(t['hash'], Json.encode([
             'type': 'connection',
             'op': 'new',
             'from': hash,
@@ -232,10 +232,10 @@ Map {
         ]));
     } else if (op == 'close') {
         hash = msg['from'];
-        _connSet[hash] = nil;
-        t = _getTunnelByLocalServiceName(msg['data']['name']);
+        ConnSet[hash] = nil;
+        t = GetTunnelByLocalServiceName(msg['data']['name']);
         if (t) {
-            _mq.send(t['hash'], _json.encode([
+            Mq.send(t['hash'], Json.encode([
                 'type': 'connection',
                 'op': 'close',
                 'from': hash,
@@ -246,7 +246,7 @@ Map {
                 ],
             ]));
         } fi
-        _mq.send(hash, _json.encode([
+        Mq.send(hash, Json.encode([
             'type': 'localConnection',
             'op': op,
             'from': nil,
@@ -254,9 +254,9 @@ Map {
         ]));
     } else { /* op == 'openAckFail' */
         hash = msg['to'];
-        if (_connSet[hash]) {
-            _connSet[hash] = nil;
-            _mq.send(hash, _json.encode([
+        if (ConnSet[hash]) {
+            ConnSet[hash] = nil;
+            Mq.send(hash, Json.encode([
                 'type': 'localConnection',
                 'op': 'close',
                 'from': msg['from'],
@@ -266,44 +266,44 @@ Map {
     }
 }
 
-@serviceCloseHandle(&msg) {
+@ServiceCloseHandle(&msg) {
     hash = msg['from'];
     if (msg['data']['type'] == 'local')
         type = 'localConnection';
     else
         type = 'remoteConnection';
-    if (_connSet[hash]) {
-        _connSet[hash] = nil;
-        _mq.send(hash, _json.encode([
+    if (ConnSet[hash]) {
+        ConnSet[hash] = nil;
+        Mq.send(hash, Json.encode([
             'type': type,
             'op': 'close',
         ]));
     } fi
 }
 
-@getTunnelByRemoteServiceName(serviceName) {
-    if (!(_sys.has(_remoteMap.serviceMap, serviceName))) {
+@GetTunnelByRemoteServiceName(serviceName) {
+    if (!(Sys.has(RemoteMap.serviceMap, serviceName))) {
         return nil;
     } fi
-    tname = _remoteMap.serviceMap[serviceName];
-    if (!(_sys.has(_tunnels, tname)) || !(_tunnels[tname])) {
+    tname = RemoteMap.serviceMap[serviceName];
+    if (!(Sys.has(Tunnels, tname)) || !(Tunnels[tname])) {
         return nil;
     } fi
-    return _tunnels[tname];
+    return Tunnels[tname];
 }
 
-@connectionNoticeHandle(&msg) {
+@ConnectionNoticeHandle(&msg) {
     s = msg['data']['name'];
     op = msg['op'];
     if (op == 'fail') {
         hash = msg['to'];
-        if (_connSet[hash]) {
-            _connSet[hash] = nil;
+        if (ConnSet[hash]) {
+            ConnSet[hash] = nil;
             if (msg['data']['remote'])
                 type = 'remoteConnection';
             else
                 type = 'localConnection';
-            _mq.send(hash, _json.encode([
+            Mq.send(hash, Json.encode([
                 'type': type,
                 'op': 'close',
                 'from': msg['from'],
@@ -312,17 +312,17 @@ Map {
         } fi
     } else if (op == 'success') {
         hash = msg['to'];
-        if (_connSet[hash]) {
-            _mq.send(hash, _json.encode([
+        if (ConnSet[hash]) {
+            Mq.send(hash, Json.encode([
                 'type': 'localConnection',
                 'op': 'open',
                 'from': msg['from'],
                 'to': hash,
             ]));
         } else {
-            t = _getTunnelByLocalServiceName(s);
+            t = GetTunnelByLocalServiceName(s);
             if (t) {
-                _mq.send(t['hash'], _json.encode([
+                Mq.send(t['hash'], Json.encode([
                     'type': 'connection',
                     'op': 'fail',
                     'from': nil,
@@ -335,10 +335,10 @@ Map {
             } fi
         }
     } else if (op == 'new') {
-        if (!(_sys.has(_remoteServices, s)) || !(_remoteServices[s])) {
-            t = _getTunnelByRemoteServiceName(s);
+        if (!(Sys.has(RemoteServices, s)) || !(RemoteServices[s])) {
+            t = GetTunnelByRemoteServiceName(s);
             if (t) {
-                _mq.send(t['hash'], _json.encode([
+                Mq.send(t['hash'], Json.encode([
                     'type': 'connection',
                     'op': 'fail',
                     'from': msg['to'],
@@ -349,23 +349,23 @@ Map {
                 ]));
             } fi
         } else {
-            _eval('remoteService.m', _json.encode([
+            Eval('remoteService.m', Json.encode([
                 'name': s,
-                'key': _remoteServices[s]['key'],
-                'timeout': _remoteServices[s]['timeout'],
+                'key': RemoteServices[s]['key'],
+                'timeout': RemoteServices[s]['timeout'],
                 'from': msg['from'],
-                'addr': _remoteServices[s]['addr'],
+                'addr': RemoteServices[s]['addr'],
             ]));
         }
     } else { /* close */
         hash = msg['to'];
-        if (_connSet[hash]) {
-            _connSet[hash] = nil;
+        if (ConnSet[hash]) {
+            ConnSet[hash] = nil;
             if (msg['data']['remote'])
                 type = 'remoteConnection';
             else
                 type = 'localConnection';
-            _mq.send(hash, _json.encode([
+            Mq.send(hash, Json.encode([
                 'type': type,
                 'op': 'close',
                 'from': msg['from'],
@@ -375,13 +375,13 @@ Map {
     }
 }
 
-@remoteConnectionHandle(&msg) {
+@RemoteConnectionHandle(&msg) {
     s = msg['data']['name'];
-    t = _getTunnelByRemoteServiceName(s);
+    t = GetTunnelByRemoteServiceName(s);
     if (msg['op'] == 'success') {
         if (t) {
-            _connSet[msg['from']] = true;
-            _mq.send(t['hash'], _json.encode([
+            ConnSet[msg['from']] = true;
+            Mq.send(t['hash'], Json.encode([
                 'type': 'connection',
                 'op': 'success',
                 'from': msg['from'],
@@ -390,12 +390,12 @@ Map {
                     'name': s,
                 ],
             ]));
-            _mq.send(msg['from'], _json.encode([
+            Mq.send(msg['from'], Json.encode([
                 'type': 'remoteConnection',
                 'op': 'success',
             ]));
         } else {
-            _mq.send(msg['from'], _json.encode([
+            Mq.send(msg['from'], Json.encode([
                 'type': 'remoteConnection',
                 'op': 'close',
                 'data': [
@@ -405,7 +405,7 @@ Map {
         }
     } else if (msg['op'] == 'fail') {
         if (t) {
-            _mq.send(t['hash'], _json.encode([
+            Mq.send(t['hash'], Json.encode([
                 'type': 'connection',
                 'op': 'fail',
                 'from': msg['from'],
@@ -417,9 +417,9 @@ Map {
         } fi
     } else { /* msg['op'] == 'close' */
         hash = msg['from'];
-        _connSet[hash] = nil;
+        ConnSet[hash] = nil;
         if (t) {
-            _mq.send(t['hash'], _json.encode([
+            Mq.send(t['hash'], Json.encode([
                 'type': 'connection',
                 'op': 'close',
                 'from': hash,
@@ -429,7 +429,7 @@ Map {
                 ],
             ]));
         } fi
-        _mq.send(hash, _json.encode([
+        Mq.send(hash, Json.encode([
             'type': 'remoteConnection',
             'op': op,
             'from': nil,
@@ -438,31 +438,31 @@ Map {
     }
 }
 
-@serviceIOHandle(&msg) {
+@ServiceIOHandle(&msg) {
     if (msg['op'] == 'input') {
         if (msg['data']['type'] == 'local') {
-            t = _getTunnelByLocalServiceName(msg['data']['name']);
+            t = GetTunnelByLocalServiceName(msg['data']['name']);
             type = 'localConnection';
         } else { /* remote */
-            t = _getTunnelByRemoteServiceName(msg['data']['name']);
+            t = GetTunnelByRemoteServiceName(msg['data']['name']);
             type = 'remoteConnection';
         }
         if (!t) {
-            _mq.send(msg['from'], _json.encode([
+            Mq.send(msg['from'], Json.encode([
                 'type': type,
                 'op': 'close',
             ]));
             return;
         } fi
-        _mq.send(t['hash'], _json.encode(msg));
+        Mq.send(t['hash'], Json.encode(msg));
     } else {
         hash = msg['to'];
-        if (_sys.has(_connSet, hash) && _connSet[hash]) {
-            _mq.send(hash, _json.encode(msg));
+        if (Sys.has(ConnSet, hash) && ConnSet[hash]) {
+            Mq.send(hash, Json.encode(msg));
         } else {
-            t = _getTunnelByRemoteServiceName(msg['data']['name']);
+            t = GetTunnelByRemoteServiceName(msg['data']['name']);
             if (t) {
-                _mq.send(t['hash'], _json.encode([
+                Mq.send(t['hash'], Json.encode([
                     'type': 'connection',
                     'op': 'close',
                     'from': hash,
@@ -476,85 +476,85 @@ Map {
     }
 }
 
-tunnels = [];
-localServices = [];
-remoteServices = [];
-localMap = $Map;
-localMap.init();
-remoteMap = $Map;
-remoteMap.init();
-connSet = [];
+Tunnels = [];
+LocalServices = [];
+RemoteServices = [];
+LocalMap = $Map;
+LocalMap.init();
+RemoteMap = $Map;
+RemoteMap.init();
+ConnSet = [];
 
 while (true) {
-    msg = mq.recv('manager', 10000);
+    msg = Mq.recv('manager', 10000);
     if (msg) {
-        msg = json.decode(msg);
+        msg = Json.decode(msg);
         type = msg['type'];
         switch (type) {
             case 'tunnel':
-                tunnelHandle(msg);
+                TunnelHandle(msg);
                 break;
             case 'tunnelConnected':
-                tunnelConnectedHandle(msg);
+                TunnelConnectedHandle(msg);
                 break;
             case 'tunnelDisconnected':
-                tunnelDisconnectedHandle(msg);
+                TunnelDisconnectedHandle(msg);
                 break;
             case 'localService':
-                localServiceHandle(msg);
+                LocalServiceHandle(msg);
                 break;
             case 'remoteService':
-                remoteServiceHandle(msg);
+                RemoteServiceHandle(msg);
                 break;
             case 'bindLocal':
-                bindLocalHandle(msg);
+                BindLocalHandle(msg);
                 break;
             case 'bindRemote':
-                bindRemoteHandle(msg);
+                BindRemoteHandle(msg);
                 break;
             case 'config':
-                configHandle(msg);
+                ConfigHandle(msg);
                 break;
             case 'localConnection':
-                localConnectionHandle(msg);
+                LocalConnectionHandle(msg);
                 break;
             case 'connectionNotice':
-                connectionNoticeHandle(msg);
+                ConnectionNoticeHandle(msg);
                 break;
             case 'remoteConnection':
-                remoteConnectionHandle(msg);
+                RemoteConnectionHandle(msg);
                 break;
             case 'serviceIO':
-                serviceIOHandle(msg);
+                ServiceIOHandle(msg);
                 break;
             case 'serviceClose':
-                serviceCloseHandle(msg);
+                ServiceCloseHandle(msg);
                 break;
             default:
                 break;
         }
     } fi
 
-    localServices = sys.diff(localServices, [nil]);
-    remoteServices = sys.diff(remoteServices, [nil]);
-    tunnels = sys.diff(tunnels, [nil]);
-    connSet = sys.diff(connSet, [nil]);
+    LocalServices = Sys.diff(LocalServices, [nil]);
+    RemoteServices = Sys.diff(RemoteServices, [nil]);
+    Tunnels = Sys.diff(Tunnels, [nil]);
+    ConnSet = Sys.diff(ConnSet, [nil]);
 
-    n = sys.size(localServices);
+    n = Sys.size(LocalServices);
     for (i = 0; i < n; ++i) {
-        s = localServices[i];
-        if (!(sys.has(localMap.serviceMap, s['name'])) || !(sys.has(tunnels, localMap.serviceMap[s['name']])))
+        s = LocalServices[i];
+        if (!(Sys.has(LocalMap.serviceMap, s['name'])) || !(Sys.has(Tunnels, LocalMap.serviceMap[s['name']])))
             continue;
         fi
-        connfd = net.tcp_accept(s['fd'], 10);
-        if (sys.is_bool(connfd) || sys.is_nil(connfd))
+        connfd = Net.tcp_accept(s['fd'], 10);
+        if (Sys.is_bool(connfd) || Sys.is_nil(connfd))
             continue;
         fi
-        eval('localService.m', json.encode([
-            'name': localServices[i]['name'],
+        Eval('localService.m', Json.encode([
+            'name': LocalServices[i]['name'],
             'fd': connfd,
-            'key': localServices[i]['key'],
-            'timeout': localServices[i]['timeout'],
+            'key': LocalServices[i]['key'],
+            'timeout': LocalServices[i]['timeout'],
         ]));
     }
 }

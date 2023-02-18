@@ -1,15 +1,15 @@
-str = import('str');
+Str = Import('str');
 
-@frameParse(&data) {
-    len = _str.strlen(data);
+@FrameParse(&data) {
+    len = Str.strlen(data);
     ret = '';
 
     while (true) {
         if (len < 2) {
             return false;
         } fi
-        lh = _str.s2b(data[0], 'int');
-        ll = _str.s2b(data[1], 'int');
+        lh = Str.s2b(data[0], 'int');
+        ll = Str.s2b(data[1], 'int');
         if (!ret && !(lh & 0x80)) {
             return false;
         } fi
@@ -17,8 +17,8 @@ str = import('str');
         if (len - 2 < l) {
             return false;
         } fi
-        ret += _str.split(data, 2, l);
-        data = _str.split(data, l + 2);
+        ret += Str.split(data, 2, l);
+        data = Str.split(data, l + 2);
         len -= (l + 2);
         if (lh & 0x40)
             break;
@@ -27,8 +27,8 @@ str = import('str');
     return ret;
 }
 
-@frameGenerate(&data) {
-    len = _str.strlen(data);
+@FrameGenerate(&data) {
+    len = Str.strlen(data);
     frame = '';
     lh = 0x80;
     while (len) {
@@ -36,14 +36,14 @@ str = import('str');
             lh |= (0x40 | ((len >> 8) & 0xff));
             ll = len & 0xff;
             len = 0;
-            frame += (_str.b2s(lh)[0] + _str.b2s(ll)[0] + data);
+            frame += (Str.b2s(lh)[0] + Str.b2s(ll)[0] + data);
             data = '';
         } else {
             lh |= 0x2f;
             ll |= 0xff;
             len -= 16383;
-            frame += (_str.b2s(lh)[0] + _str.b2s(ll)[0] + _str.split(data, 0, 16383));
-            data = _str.split(data, 16383);
+            frame += (Str.b2s(lh)[0] + Str.b2s(ll)[0] + Str.split(data, 0, 16383));
+            data = Str.split(data, 16383);
         }
         lh = 0;
     }

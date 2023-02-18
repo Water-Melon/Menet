@@ -1,7 +1,7 @@
 #include "conf.m"
 
-json = import('json');
+json = Import('json');
 
-eval('admin.m', json.encode(conf['admin']));
-eval('manager.m');
-eval('server.m', json.encode(conf['tunnel']));
+Eval('admin.m', json.encode(conf['admin']));
+Eval('manager.m');
+Eval('server.m', json.encode(conf['tunnel']));

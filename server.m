@@ -1,7 +1,7 @@
-json = import('json');
-sys = import('sys');
-md5 = import('md5');
-net = import('net');
+json = Import('json');
+sys = Import('sys');
+md5 = Import('md5');
+net = Import('net');
 
 conf = json.decode(EVAL_DATA);
 sys.print('tunnel listen:' + conf['ip'] + ':' + conf['port']);
@@ -12,6 +12,6 @@ while (true) {
         'hash': md5.md5('' + connfd + sys.time()),
         'fd': connfd
     ];
-    eval('tunnels.m', json.encode(tcp));
+    Eval('tunnels.m', json.encode(tcp));
 }
 

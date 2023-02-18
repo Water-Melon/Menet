@@ -1,16 +1,16 @@
 #include "frame.m"
 
-mq = import('mq');
-json = import('json');
-net = import('net');
-sys = import('sys');
-rc = import('rc');
-b = import('base64');
+Mq = Import('mq');
+Json = Import('json');
+Net = Import('net');
+Sys = Import('sys');
+Rc = Import('rc');
+B64 = Import('base64');
 
-@cleanMsg(hash) {
+@CleanMsg(hash) {
     cnt = 0;
     while (cnt < 30) {
-        ret = _mq.recv(hash, 100000);
+        ret = Mq.recv(hash, 100000);
         if (!ret)
             ++cnt;
         else
@@ -18,24 +18,24 @@ b = import('base64');
     }
 }
 
-@cleanTunnelMsg(hash) {
+@CleanTunnelMsg(hash) {
     cnt = 0;
     while (cnt < 30) {
-        ret = _mq.recv(hash, 100000);
+        ret = Mq.recv(hash, 100000);
         if (!ret) {
             ++cnt;
         } else {
             cnt = 0;
-            ret = _json.decode(ret);
+            ret = Json.decode(ret);
             if (ret['type'] == 'connection' && ret['op'] == 'new') {
-                _mq.send('manager', _json.encode([
+                Mq.send('manager', Json.encode([
                     'type': 'localConnection',
                     'op': 'openAckFail',
                     'from': nil,
                     'to': ret['from'],
                 ]));
             } else if (ret['type'] == 'serviceIO') {
-                _mq.send('manager', _json.encode([
+                Mq.send('manager', Json.encode([
                     'type': 'serviceClose',
                     'op': 'immediate',
                     'from': msg['from'],
@@ -50,9 +50,9 @@ b = import('base64');
     }
 }
 
-@closeServiceConnection(fd, hash, name, type, peer) {
+@CloseServiceConnection(fd, hash, name, type, peer) {
     if (type == 'local') {
-        _mq.send('manager', _json.encode([
+        Mq.send('manager', Json.encode([
             'type': 'localConnection',
             'op': 'close',
             'from': hash,
@@ -62,7 +62,7 @@ b = import('base64');
             ],
         ]));
     } else {
-        _mq.send('manager', _json.encode([
+        Mq.send('manager', Json.encode([
             'type': 'remoteConnection',
             'op': 'close',
             'from': hash,
@@ -73,12 +73,12 @@ b = import('base64');
         ]));
     }
 
-    _cleanMsg(hash);
-    _net.tcp_close(fd);
+    CleanMsg(hash);
+    Net.tcp_close(fd);
 }
 
-@closeTunnelConnection(fd, hash, name) {
-    _mq.send('manager', _json.encode([
+@CloseTunnelConnection(fd, hash, name) {
+    Mq.send('manager', Json.encode([
         'type': 'tunnelDisconnected',
         'op': nil,
         'from': hash,
@@ -87,14 +87,14 @@ b = import('base64');
         ],
     ]));
 
-    _cleanTunnelMsg(hash);
-    _net.tcp_close(fd);
+    CleanTunnelMsg(hash);
+    Net.tcp_close(fd);
 }
 
-@tunnelMsgConnectionHandle(fd, hash, msg) {
+@TunnelMsgConnectionHandle(fd, hash, msg) {
     op = msg['op'];
     if (op == 'new') {
-        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
+        ret = Net.tcp_send(fd, FrameGenerate(Json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -104,7 +104,7 @@ b = import('base64');
             ],
         ])));
         if (!ret) {
-            _mq.send('manager', _json.encode([
+            Mq.send('manager', Json.encode([
                 'type': 'localConnection',
                 'op': 'openAckFail',
                 'from': nil,
@@ -113,7 +113,7 @@ b = import('base64');
             return false;
         } fi
     } else if (op == 'close') {
-        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
+        ret = Net.tcp_send(fd, FrameGenerate(Json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -127,7 +127,7 @@ b = import('base64');
             return false;
         fi
     } else if (op == 'fail') {
-        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
+        ret = Net.tcp_send(fd, FrameGenerate(Json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -140,7 +140,7 @@ b = import('base64');
             return false;
         fi
     } else { /* op =='success' */
-        ret = _net.tcp_send(fd, _frameGenerate(_json.encode([
+        ret = Net.tcp_send(fd, FrameGenerate(Json.encode([
             'type': 'connection',
             'op': op,
             'from': msg['from'],
@@ -156,19 +156,19 @@ b = import('base64');
     return true;
 }
 
-@tunnelMsgDisconnectHandle(fd, from, hash) {
-    _net.tcp_close(fd);
+@TunnelMsgDisconnectHandle(fd, from, hash) {
+    Net.tcp_close(fd);
     if (from) {
-        _mq.send(from, _json.encode([
+        Mq.send(from, Json.encode([
             'code': 200,
             'msg': "OK",
         ]));
     } fi
-    _cleanTunnelMsg(hash);
+    CleanTunnelMsg(hash);
 }
 
-@tunnelNetConnectionHandle(&msg) {
-    _mq.send('manager', _json.encode([
+@TunnelNetConnectionHandle(&msg) {
+    Mq.send('manager', Json.encode([
         'type': 'connectionNotice',
         'op': msg['op'],
         'from': msg['from'],
@@ -180,15 +180,15 @@ b = import('base64');
     ]));
 }
 
-@tunnelMsgDataHandle(fd, &msg) {
-    ret = _net.tcp_send(fd, _frameGenerate(_json.encode(msg)));
+@TunnelMsgDataHandle(fd, &msg) {
+    ret = Net.tcp_send(fd, FrameGenerate(Json.encode(msg)));
     if (!ret) {
         if (msg['data']['type'] == 'local') {
             type = 'localConnection';
         } else {
             type = 'remoteConnection';
         }
-        _mq.send('manager', _json.encode([
+        Mq.send('manager', Json.encode([
             'type': type,
             'op': 'close',
             'from': msg['from'],
@@ -201,31 +201,31 @@ b = import('base64');
     return true;
 }
 
-@tunnelNetServiceIOHandle(frame) {
+@TunnelNetServiceIOHandle(frame) {
     frame['op'] = 'output';
-    _mq.send('manager', _json.encode(frame));
+    Mq.send('manager', Json.encode(frame));
 }
 
-@tunnelLoop(fd, hash, name, &rbuf) {
+@TunnelLoop(fd, hash, name, &rbuf) {
     while (true) {
-        msg = _mq.recv(hash, 10000);
+        msg = Mq.recv(hash, 10000);
         if (msg) {
-            msg = _json.decode(msg);
+            msg = Json.decode(msg);
             switch(msg['type']) {
                 case 'disconnect':
-                    _tunnelMsgDisconnectHandle(fd, msg['from'], hash);
+                    TunnelMsgDisconnectHandle(fd, msg['from'], hash);
                     return;
                 case 'connection':
-                    ret = _tunnelMsgConnectionHandle(fd, hash, msg);
+                    ret = TunnelMsgConnectionHandle(fd, hash, msg);
                     if (!ret) {
-                        _closeTunnelConnection(fd, hash, name);
+                        CloseTunnelConnection(fd, hash, name);
                         return;
                     } fi
                     break;
                 case 'serviceIO':
-                    ret = _tunnelMsgDataHandle(fd, msg);
+                    ret = TunnelMsgDataHandle(fd, msg);
                     if (!ret) {
-                        _closeTunnelConnection(fd, hash, name);
+                        CloseTunnelConnection(fd, hash, name);
                         return;
                     } fi
                     break;
@@ -234,32 +234,32 @@ b = import('base64');
             }
         } fi
     
-        ret = _net.tcp_recv(fd, 10);
-        if (_sys.is_bool(ret)) {
-            _closeTunnelConnection(fd, hash, name);
+        ret = Net.tcp_recv(fd, 10);
+        if (Sys.is_bool(ret)) {
+            CloseTunnelConnection(fd, hash, name);
             return;
         } else {
-            if (!(_sys.is_nil(ret)))
+            if (!(Sys.is_nil(ret)))
                 rbuf += ret;
             fi
             if (rbuf) {
                 ret = true;
-                frame = _frameParse(rbuf);
+                frame = FrameParse(rbuf);
                 if (frame) {
-                    frame = _json.decode(frame);
+                    frame = Json.decode(frame);
                     type = frame['type'];
                     switch(type) {
                         case 'connection':
-                            _tunnelNetConnectionHandle(frame);
+                            TunnelNetConnectionHandle(frame);
                             break;
                         case 'serviceIO':
-                            _tunnelNetServiceIOHandle(frame);
+                            TunnelNetServiceIOHandle(frame);
                             break;
                         default:
                             break;
                     }
                     if (!ret) {
-                        _closeTunnelConnection(fd, hash, name);
+                        CloseTunnelConnection(fd, hash, name);
                         return;
                     } fi
                 } fi
@@ -268,8 +268,8 @@ b = import('base64');
     }
 }
 
-@serviceMsgProcess(fd, hash, name, &msg, type, peer, key) {
-    msg = _json.decode(msg);
+@ServiceMsgProcess(fd, hash, name, &msg, type, peer, key) {
+    msg = Json.decode(msg);
     t = msg['type'];
     switch (t) {
         case 'remoteConnection':
@@ -283,8 +283,8 @@ b = import('base64');
             } fi
             break;
         case 'serviceIO':
-            data = _rc.rc4(_b.base64(msg['data']['data'], 'decode'), key);
-            if (!(_net.tcp_send(fd, data)))
+            data = Rc.rc4(B64.base64(msg['data']['data'], 'decode'), key);
+            if (!(Net.tcp_send(fd, data)))
                 return false;
             fi
             break;
@@ -294,8 +294,8 @@ b = import('base64');
     return true;
 }
 
-@serviceDataProcess(fd, hash, name, peer, key, type, &data) {
-    _mq.send('manager', _json.encode([
+@ServiceDataProcess(fd, hash, name, peer, key, type, &data) {
+    Mq.send('manager', Json.encode([
         'type': 'serviceIO',
         'op': 'input',
         'from': hash,
@@ -303,7 +303,7 @@ b = import('base64');
         'data': [
             'name': name,
             'type': type,
-            'data': _b.base64(_rc.rc4(data, key), 'encode'),
+            'data': B64.base64(Rc.rc4(data, key), 'encode'),
         ],
     ]));
     return true;

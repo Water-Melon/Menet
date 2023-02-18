@@ -1,51 +1,51 @@
 #include "common.m"
 
-json = import('json');
-mq = import('mq');
-net = import('net');
-mq = import('mq');
+Json = Import('json');
+Mq = Import('mq');
+Net = Import('net');
+Sys = Import('sys');
 
-conf = json.decode(EVAL_DATA);
+conf = Json.decode(EVAL_DATA);
 
-@badRequest(from) {
-    _mq.send(from, _json.encode([
+@BadRequest(from) {
+    Mq.send(from, Json.encode([
         'code': 400,
         'msg': 'Bad Request'
     ]));
 }
-fd = net.tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
-if (sys.is_bool(fd) || sys.is_nil(fd)) {
-    badRequest(conf['from']);
+fd = Net.tcp_connect(conf['dest'][0], conf['dest'][1], 1000);
+if (Sys.is_bool(fd) || Sys.is_nil(fd)) {
+    BadRequest(conf['from']);
     return;
 } fi
 hash = conf['hash'];
 
-ret = net.tcp_send(fd, frameGenerate(json.encode([
+ret = Net.tcp_send(fd, FrameGenerate(Json.encode([
     'type': 'sync',
     'from': nil,
     'to': nil,
     'data': conf['name'],
 ])));
 if (!ret) {
-    badRequest(conf['from']);
-    net.tcp_close(fd);
+    BadRequest(conf['from']);
+    Net.tcp_close(fd);
     return;
 } fi
 
-rbuf = net.tcp_recv(fd, 3000);
-if (sys.is_bool(rbuf) || sys.is_nil(rbuf)) {
-    badRequest(conf['from']);
-    net.tcp_close(fd);
+rbuf = Net.tcp_recv(fd, 3000);
+if (Sys.is_bool(rbuf) || Sys.is_nil(rbuf)) {
+    BadRequest(conf['from']);
+    Net.tcp_close(fd);
     return;
 } fi
-ret = frameParse(rbuf);
+ret = FrameParse(rbuf);
 if (!ret) {
-    badRequest(conf['from']);
-    net.tcp_close(fd);
+    BadRequest(conf['from']);
+    Net.tcp_close(fd);
     return;
 } fi
 
-mq.send('manager', json.encode([
+Mq.send('manager', Json.encode([
     'type': 'tunnelConnected',
     'op': nil,
     'from': hash,
@@ -55,12 +55,12 @@ mq.send('manager', json.encode([
     ],
 ]));
 
-ret = mq.recv(hash);
-mq.send(conf['from'], ret);
-ret = json.decode(ret);
+ret = Mq.recv(hash);
+Mq.send(conf['from'], ret);
+ret = Json.decode(ret);
 if (ret['code'] != 200) {
-    net.tcp_close(fd);
+    Net.tcp_close(fd);
     return;
 } fi
 
-tunnelLoop(fd, hash, conf['name'], rbuf);
+TunnelLoop(fd, hash, conf['name'], rbuf);

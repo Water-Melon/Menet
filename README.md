@@ -12,21 +12,21 @@ Menet is like a combination of `Nginx UNIT` and `FRP`. On the one hand, users ca
 
 
 
-### Installation
+## Installation
 
 Menet is written by [Melang](https://github.com/Water-Melon/Melang) which is a script language. So we just Install `melang`, please refer to the `README` of `Melang` repository.
 
 
 
-### Usage
+## Usage
 
-#### Start the service
+### Start the service
 
 ```shell
 $ melang menet.m
 ```
 
-#### Configuration
+### Configuration
 
 The configuration file is `conf.m`. The code in this file is a Melang array structure.
 
@@ -45,7 +45,7 @@ conf = [
 
 Menet is both a tunnel client and a tunnel server.
 
-#### APIs
+### APIs
 
 There are four APIs:
 
@@ -54,7 +54,7 @@ There are four APIs:
 - bind
 - config
 
-##### tunnel
+#### tunnel
 
 Add or remove a tunnel, and complete the establishment of tunnel TCP and information synchronization.
 
@@ -75,7 +75,7 @@ http://ip:port/tunnel
 
   `name` will be synchronized to tunnel server automatically.
 
-##### service
+#### service
 
 Add or remove a service. There are two kinds of services:
 
@@ -102,7 +102,7 @@ http://ip:port/service
   }
   ```
 
-##### bind
+#### bind
 
 Add or remove a tunnel-service mapping relationship. And of course, because there are two types of services, the mapping relationship is also divided into `local` and `remote`.
 
@@ -124,7 +124,7 @@ http://ip:port/bind
   }
   ```
 
-##### config
+#### config
 
 Display the configuration on Menet service.
 
@@ -135,7 +135,7 @@ http://ip:port/config
 - HTTP Method: `GET`
 - HTTP Body: None
 
-##### Example
+#### Example
 
 ```
                   |---------------|                      |------------------|
@@ -161,7 +161,7 @@ You can now check the configuration of both Menet services using the `config` re
 
 
 
-### License
+## License
 
 [GNU Affero General Public License v3.0](https://github.com/Water-Melon/Menet/blob/master/LICENSE)
 

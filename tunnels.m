@@ -1,8 +1,9 @@
 #include "common.m"
 
-json = import('json');
-net = import('net');
-mq = import('mq');
+json = Import('json');
+net = Import('net');
+mq = Import('mq');
+sys = Import('sys');
 
 conf = json.decode(EVAL_DATA);
 fd = conf['fd'];
@@ -13,7 +14,7 @@ if (sys.is_bool(rbuf) || sys.is_nil(rbuf)) {
     net.tcp_close(fd);
     return;
 } fi
-ret = frameParse(rbuf);
+ret = FrameParse(rbuf);
 if (!ret) {
     net.tcp_close(fd);
     return;
@@ -21,7 +22,7 @@ if (!ret) {
 ret = json.decode(ret);
 name = ret['data'];
 
-ret = net.tcp_send(fd, frameGenerate(json.encode([
+ret = net.tcp_send(fd, FrameGenerate(json.encode([
     'code': 200,
     'msg': 'OK',
 ])));
@@ -40,4 +41,4 @@ mq.send('manager', json.encode([
     ],
 ]));
 
-tunnelLoop(fd, hash, name, rbuf);
+TunnelLoop(fd, hash, name, rbuf);
